@@ -55,6 +55,7 @@ def sc_files():  # Check password files and key_hash present and returns their v
     if os.path.exists("saved_logins") and os.path.exists("token"):
         logins = open("saved_logins", "r")
         token = open("token", "r")
+        key = ""
     elif not os.path.exists("saved_logins"):
         print("saved_logins file is missing, creating new logins and token file.")
         key = getpass("Please enter your new key: ")
@@ -65,6 +66,8 @@ def sc_files():  # Check password files and key_hash present and returns their v
             confirm_key = getpass("Confirm you key: ")
         token = open("token", "w")
         token.write(hash256(key))
+        token.close()
+        token = open("token", "r")
         logins = create_logins_file(key)
 
     elif not os.path.exists("token"):
@@ -85,7 +88,7 @@ def sc_files():  # Check password files and key_hash present and returns their v
             exit(0)
 
     # noinspection PyUnboundLocalVariable
-    return token, logins
+    return token, logins, key
 
 
 def hash256(key):  # Hashes a given key with sha512
@@ -94,7 +97,7 @@ def hash256(key):  # Hashes a given key with sha512
 
 
 def check_key(token_f):  # Compares the stored hash with the user hash
-    stored_hash = token_f.read()
+    stored_hash = token_f.read()  # File not readable after creating new token file
     if stored_hash == "" or stored_hash.__len__() != 128:
         print("No compatible key stored. New key needed. (This will format any stored password's)\n")
         token_f.close()
@@ -125,8 +128,6 @@ def check_key(token_f):  # Compares the stored hash with the user hash
                 user_key = getpass("Your key didn't match the saved key. Please try again: ")
                 hashed_key = hash256(user_key)
                 xyz += 1
-        print("Correct key")
-        sleep(0.1)
 
     key = user_key
 
@@ -164,7 +165,7 @@ def generate_random_pass(length):
     nums = "01234567890"
     x = 0
     y = 0
-    while x == 0 and y == 0:  # Makes sure at least one number and one special character is present
+    while x == 0 or y == 0:  # Makes sure at least one number and one special character is present
         x = 0
         y = 0
         ran_pass = "".join(sample(chars, length))
@@ -244,14 +245,24 @@ def edit_record(logins_f, key):
 
 
 def delete_record(logins_f, key):
-    readall_passwords(logins_f, key)
-    record_to_delete = int(input("Which record do you want to delete? ")) + 1
-    row_c = 0
-    for row in logins_f:
-        if row_c == record_to_delete:
-            row = ""
-        else:
+    readall_passwords(logins_f.name, key)
+    record_to_delete = int(input("Which record do you want to delete? "))
+    confirm = input("Are you sure you want to delete row number %s ? Y/n: " % record_to_delete)
+    record_to_delete += 1
+    if confirm.lower() == "y":
+        row_c = 0
+        temp_file = open("temp", "a")
+        decrypt_file(logins_file.name, "unenc", key)
+        unenc = open("unenc", "r")
+        for row in unenc:
+            if row_c != record_to_delete:
+                temp_file.write(row)
             row_c += 1
+        unenc.close()
+        temp_file.close()
+        os.remove(unenc.name)
+        encrypt_file(temp_file.name, logins_file.name, key)
+        # os.remove(temp_file.name)
 
 
 def change_key(key):
@@ -277,6 +288,7 @@ def change_key(key):
     decrypt_file("saved_logins", "temp", key)
     encrypt_file("temp", "saved_logins", new_key)
     os.remove("temp")
+    return new_key
 
 
 def delete_at_exit_safe():
@@ -286,12 +298,23 @@ def delete_at_exit_safe():
         os.remove("temp")
 
 
+def delete_files(token_f, logins_f):
+    confirm = input("Are you sure you want to delete the files? Y/n: ")
+    if confirm.lower() == "y":
+        token_f.close()
+        logins_f.close()
+        os.remove(logins_f.name)
+        os.remove(token_f.name)
+        exit(0)
+
+
 clear = lambda: os.system('cls')
 
 
 clear()
-token_file, logins_file = sc_files()
-key_ = check_key(token_file)
+token_file, logins_file, key_ = sc_files()
+if key_ == "":
+    key_ = check_key(token_file)
 
 while True:  # Main loop
     clear()
@@ -308,11 +331,12 @@ while True:  # Main loop
         add_new_record(logins_file, key_)
     elif option == 3:
         edit_record(logins_file, key_)
+    elif option == 4:
+        delete_record(logins_file, key_)
     elif option == 5:
-        change_key(key_)  # After changing the key the next error appears: OSError: File "saved_logins" was not found
-        print("Key succesfuly change")
-        sleep(1)
-        exit(0)
+        key_ = change_key(key_)
+    elif option == 6:
+        delete_files(token_file, logins_file)
     elif option == 0:
         break
 
