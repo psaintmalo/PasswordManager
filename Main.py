@@ -8,6 +8,8 @@ from random import sample
 from getpass import getpass
 from hashlib import sha3_512
 
+from testing import x
+
 
 def encrypt_file(decrypted_in, encrypted_out, key):
     pyAesCrypt.encryptFile(decrypted_in, encrypted_out, key, 1024*64)
@@ -17,18 +19,24 @@ def decrypt_file(encrypted_in, decrypted_out, key):
     pyAesCrypt.decryptFile(encrypted_in, decrypted_out, key, 1024 * 64)
 
 
-def send_mail_copy(saved_logins, token):  # WORK NEEDED TO SEND ATTACHMENT FO FILES ------------------------------------
-    print("Currently this option only works with gmail, and you have turn on 'Allow less secure apps' ", end="\n\n")
+def send_mail_copy(saved_logins, token, key):  # WORK NEEDED TO SEND ATTACHMENT FO FILES -------------------------------
+    print("Currently this option only works with gmail, and you have to turn on 'Allow less secure apps' ", end="\n\n")
     en = input("Would you like to send the files encrypted? (Recommended option is Y) Y/n")
     if en.lower() == "y":
+        message = "Attached here you have encrypted copies of saved_logins and token files" \
+                  "\n\nSent by PasswordManager."
         token_file = "x"
         logins_file = "y"
     elif en.lower() == "n":
-        pass  # Send unencrypted file
+        message = "Attached here you have encrypted copies of saved_logins and token files" \
+                  "\n\nSent by PasswordManager."
     else:
         print("Didn't recognize that answer, preceding sending encrypted files")
+        message = "Attached here you have encrypted copies of saved_logins and token files" \
+                  "\n\nSent by PasswordManager."
+        token_file = "x"
+        logins_file = "y"
 
-    message = ""
     sender_mail = input("Email to send the files: ")
     sender_pass = getpass("Password of mail: ")
     receiver_mail = input("Email to receive files: ")
@@ -234,10 +242,10 @@ def edit_record(logins_f, key):
         new_value = input("New value for the Note: ")
 
     else:
-        new_value = ""
+        new_value = "hfnguiesghnsiouegnsiuepogsgsueignseuigoesnugiose"
         print("That wasn't a valid option")
 
-    if new_value != "":
+    if new_value != "hfnguiesghnsiouegnsiuepogsgsueignseuigoesnugiose":
         csv_value_change(record_to_change, field_to_change, new_value, unenc)
 
     encrypt_file(unenc, "saved_logins", key)
@@ -308,6 +316,46 @@ def delete_files(token_f, logins_f):
         exit(0)
 
 
+def move_record(logins_f, key):
+    readall_passwords(logins_file.name, key)
+    record_to_move = int(input("Which record would you like to move? ")) + 1
+    new_position = int(input("Where would you like to move this record? ")) + 1
+    row_c = 0
+    decrypt_file(logins_file.name, "unenc", key)
+    unenc = open("unenc", "r")
+    row_to_move = ""
+    for row in unenc:  # First loop to find the row we want to move
+        if row_c == record_to_move:
+            row_to_move = row
+            break
+        row_c += 1
+    unenc.close()
+    if row_to_move != "":
+        row_c = 0
+        temp_file = open("temp", "w", newline="")
+        decrypt_file(logins_file.name, "unenc", key)
+        unenc = open("unenc", "r")
+        for row in unenc:
+            if row_c == new_position:
+                if row_to_move.endswith("\n"):  # Checks if there is already \n to avoid extra blank spaces
+                    temp_file.write(row_to_move)
+                else:
+                    temp_file.write(row_to_move + "\n")
+                temp_file.write(row)
+            elif row_c != record_to_move and row != "":
+                temp_file.write(row)
+            print(row)
+            row_c += 1
+        unenc.close()
+        temp_file.close()
+        os.remove(unenc.name)
+        os.remove(temp_file.name)
+        encrypt_file(temp_file.name, logins_file.name, key)
+    else:
+        print("Couldn't find the selected record")
+        sleep(2)
+
+
 clear = lambda: os.system('cls')
 
 
@@ -318,8 +366,9 @@ if key_ == "":
 
 while True:  # Main loop
     clear()
-    print("\n1) Read saved logins      2) Add new record\n3) Edit existing record   4) Delete record")  # Options
-    print("5) Change key             6) Delete all files\n0) Exit")
+    print("1) Read saved logins      2) Add new record\n3) Edit existing record   4) Delete record")  # Options
+    print("5) Change key             6) Delete all files\n7) Move record")
+    print("0) Exit")
     option = int(input("-> ",))  # Choose option
     clear()
     if not 10 > option >= 0:  # Check option is between the acceptable values
@@ -337,6 +386,12 @@ while True:  # Main loop
         key_ = change_key(key_)
     elif option == 6:
         delete_files(token_file, logins_file)
+    elif option == 7:
+        move_record(logins_file, key_)
+    elif option == 8:
+        send_mail_copy(logins_file, token_file, key_)
+    elif option == 9:
+        pass
     elif option == 0:
         break
 
