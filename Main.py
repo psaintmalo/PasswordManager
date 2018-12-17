@@ -1,14 +1,26 @@
 import os
-import smtplib
-import pyAesCrypt
 import csv
+import shutil
+import smtplib
+import platform
+import pyAesCrypt
 import pandas as pd
 from time import sleep
 from random import sample
 from getpass import getpass
 from hashlib import sha3_512
+from datetime import datetime
 
-from testing import x
+
+def double_check(promt1="Key for file: ", promt2="Confirm key for file: ", promt3="Keys don't match\n"):
+    key1 = getpass(promt1)
+    key2 = getpass(promt2)
+    while key1 != key2:
+        print(promt3)
+        key1 = getpass(promt1)
+        key2 = getpass(promt2)
+    else:
+        return key1
 
 
 def encrypt_file(decrypted_in, encrypted_out, key):
@@ -106,7 +118,7 @@ def hash256(key):  # Hashes a given key with sha512
 
 def check_key(token_f):  # Compares the stored hash with the user hash
     stored_hash = token_f.read()  # File not readable after creating new token file
-    if stored_hash == "" or stored_hash.__len__() != 128:
+    if stored_hash.__len__() != 128:
         print("No compatible key stored. New key needed. (This will format any stored password's)\n")
         token_f.close()
         while True:
@@ -168,8 +180,8 @@ def csv_value_change(x, y, value, file_name):
 
 
 def generate_random_pass(length):
-    chars = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNPQRSTUVWXYZ!@#$%^&*()?"
-    special_chars = "!@#$%^&*()?"
+    chars = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNPQRSTUVWXYZ!@#$%^&*()/-_.:?"
+    special_chars = "!@#$%^&*()/-_.:?"
     nums = "01234567890"
     x = 0
     y = 0
@@ -227,8 +239,8 @@ def edit_record(logins_f, key):
         new_value = input("New value for the Email: ")
 
     elif field_to_change == 2:
-        option = input("Would you like a new random password? Y/n: ")
-        if option.lower() == "n":
+        option_ = input("Would you like a new random password? Y/n: ")
+        if option_.lower() == "n":
             new_value = getpass("New value for the Password: ")
         else:
             length = input("How long would you like the password to be? Leave blank for default length: ")
@@ -306,22 +318,28 @@ def delete_at_exit_safe():
         os.remove("temp")
 
 
-def delete_files(token_f, logins_f):
-    confirm = input("Are you sure you want to delete the files? Y/n: ")
-    if confirm.lower() == "y":
-        token_f.close()
-        logins_f.close()
-        os.remove(logins_f.name)
-        os.remove(token_f.name)
-        exit(0)
+def delete_files(token_f, logins_f, key):
+    confirm = input("Are you sure you want to delete the files? Type CONFIRM to continue: ")
+    if confirm == "CONFIRM":
+        pass_confirm = getpass("Please enter your key to continue: ")
+        if pass_confirm == key:
+            token_f.close()
+            logins_f.close()
+            os.remove(logins_f.name)
+            os.remove(token_f.name)
+            exit(0)
+        else:
+            print("Keys don't match")
+            sleep(1.5)
 
 
 def move_record(logins_f, key):
-    readall_passwords(logins_file.name, key)
+    logins_fname = logins_f.name
+    readall_passwords(logins_fname, key)
     record_to_move = int(input("Which record would you like to move? ")) + 1
     new_position = int(input("Where would you like to move this record? ")) + 1
     row_c = 0
-    decrypt_file(logins_file.name, "unenc", key)
+    decrypt_file(logins_fname, "unenc", key)
     unenc = open("unenc", "r")
     row_to_move = ""
     for row in unenc:  # First loop to find the row we want to move
@@ -333,7 +351,7 @@ def move_record(logins_f, key):
     if row_to_move != "":
         row_c = 0
         temp_file = open("temp", "w", newline="")
-        decrypt_file(logins_file.name, "unenc", key)
+        decrypt_file(logins_fname, "unenc", key)
         unenc = open("unenc", "r")
         for row in unenc:
             if row_c == new_position:
@@ -356,44 +374,179 @@ def move_record(logins_f, key):
         sleep(2)
 
 
-clear = lambda: os.system('cls')
+def clear_console():
+    try:
+        clear()
+    except NameError:
+        pass
 
 
-clear()
+def local_backup(logins_f, token_f, key):
+    home_path = os.path.expanduser("~")
+    default_path = home_path + "\\Documents\\PasswordManager_Backup\\"
+    user_path = input("Please enter the directory for the back up ( C:\\Path\\To\\Folder\\ ) "
+                      "or leave blank for default:")
+    if user_path == "":
+        print("Using default path")
+        path2use = default_path
+    elif os.path.exists(user_path):
+        path2use = user_path
+    elif not os.path.exists(user_path):
+        print("Could not locate that path. Using default path")
+        path2use = default_path
+    else:
+        print("Unknown error, using default path")
+        path2use = default_path
+
+    enc = input("Would you like to save the backup (E)ncrypted or (D)ecrypted (Encrypted is strongly recommended) :")
+    datetime_ = (str(datetime.now()).replace(" ", "_").replace(":", "-"))[:-7]
+    backup_name = logins_f.name + datetime_
+
+    try:
+        os.makedirs(path2use)
+    except FileExistsError:
+        pass
+
+    if enc.lower() == "e":
+        print("Copying files encrypted to " + path2use)
+        shutil.copy(logins_f.name, path2use + backup_name)
+        shutil.copy(token_f.name, path2use + token_file.name + datetime_)
+    elif enc.lower() == "d":
+        print("Decrypting files")
+        w = 0
+        key_conf = getpass("Please confirm your key: ")
+        while key_conf != key:
+            w += 1
+            if w == 3:
+                print("Too many tries")
+                exit()
+            print("Keys dont match")
+            key_conf = getpass("Please confirm your key: ")
+        decrypt_file(logins_f.name, "temp", key)
+        print("Copying decrypted files to " + path2use)
+        shutil.copy("temp", path2use + backup_name)
+        os.remove("temp")
+    else:
+        print("Unexpected error, please try again")
+
+    sleep(2)
+
+
+def import_backup(key):
+    confirm = input("This will delete any data present. Are you sure you want to continue? Y/n: ")
+
+    if confirm.lower() == "y":
+
+        w = 0
+        key_conf = getpass("Please confirm your key: ")
+        while key_conf != key:
+            w += 1
+            if w == 3:
+                print("Too many tries")
+                exit()
+            print("Keys dont match")
+            key_conf = getpass("Please confirm your key: ")
+
+        path_to_backup = input("Please type the path to the logins backup or leave blank for default " 
+                               "(C:\\Path\\To\\Folder\\File) ")
+
+        if path_to_backup == "":
+            print("No input, trying default folder")
+            home_path = os.path.expanduser("~")
+            default_path = home_path + "\\Documents\\PasswordManager_Backup\\"
+            name = input("Please type the name of the backup file")
+            if os.path.exists(default_path + name):
+                print("saved_logins file found at default folder")
+                saved_logins_file = open(default_path + "saved_logins", "r")
+        else:
+            saved_logins_file = open(path_to_backup)
+
+        try:
+            csv.reader(saved_logins_file)
+            decrypted = True
+        except UnicodeDecodeError:
+            decrypted = False
+
+        if decrypted:
+            print("File detected as decrypted, new key required to continue")
+            key = double_check("New key: ", "Confirm new key: ", "Keys don't match\n")
+            encrypt_file(saved_logins_file.name, "saved_logins", key)
+            with open("token", "w") as token:
+                token.write(hash256(key))
+        elif not decrypted:
+            print("File detected as encrypted")
+            token_file_name =
+        elif os.path.exists(path_to_backup + "token"):
+            print("Could not locate token file")
+    else:
+        print("Exiting")
+
+
+version = "v0.0.5"
+if platform.system() == "Windows":
+    def clear(): os.system('cls')  # Windows
+elif platform.system() == ("Linux" or "macosx"):
+    def clear(): os.system('clear')  # Linux
+else:
+    print("Could not detect os system. App may not function properly")
+    sleep(1)
+
+
+clear_console()
+
 token_file, logins_file, key_ = sc_files()
-if key_ == "":
+if key_ == "":  # ???
     key_ = check_key(token_file)
 
+accepted_options = "1234567890"
+
 while True:  # Main loop
-    clear()
+    clear_console()
     print("1) Read saved logins      2) Add new record\n3) Edit existing record   4) Delete record")  # Options
-    print("5) Change key             6) Delete all files\n7) Move record")
+    print("5) Change key             6) Delete all files\n7) Move record            8) Create backup")
+    print("9) Import backup")
     print("0) Exit")
-    option = int(input("-> ",))  # Choose option
-    clear()
-    if not 10 > option >= 0:  # Check option is between the acceptable values
-        pass
-    elif option == 1:  # Run option
-        readall_passwords(logins_file.name, key_)
-        x = input("\nPress enter to continue")
-    elif option == 2:
-        add_new_record(logins_file, key_)
-    elif option == 3:
-        edit_record(logins_file, key_)
-    elif option == 4:
-        delete_record(logins_file, key_)
-    elif option == 5:
-        key_ = change_key(key_)
-    elif option == 6:
-        delete_files(token_file, logins_file)
-    elif option == 7:
-        move_record(logins_file, key_)
-    elif option == 8:
-        send_mail_copy(logins_file, token_file, key_)
-    elif option == 9:
-        pass
-    elif option == 0:
-        break
+    option = input("-> ", )
+
+    if option.isdigit():
+        option_is_int = True
+        option = int(option)
+    else:
+        option_is_int = False
+
+    clear_console()
+
+    if str(option) in accepted_options:
+        if option_is_int:
+            if not 10 > option >= 0:  # Check option is between the acceptable values
+                pass
+            elif option == 1:  # Run option
+                readall_passwords(logins_file.name, key_)
+                x = input("\nPress enter to continue")
+            elif option == 2:
+                add_new_record(logins_file, key_)
+            elif option == 3:
+                edit_record(logins_file, key_)
+            elif option == 4:
+                delete_record(logins_file, key_)
+            elif option == 5:
+                key_ = change_key(key_)
+            elif option == 6:
+                delete_files(token_file, logins_file, key_)
+            elif option == 7:
+                move_record(logins_file, key_)
+            elif option == 8:
+                local_backup(logins_file, token_file, key_)
+            elif option == 9:
+                import_backup(key_)
+            elif option == 0:
+                break
+        else:
+            if option.lower() == "a":
+                pass
+    else:
+        print("%s isn't a supported option" % option)
+        x = input("Press Enter to continue")
 
 key_ = ""
-clear()
+clear_console()

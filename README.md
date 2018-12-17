@@ -11,4 +11,6 @@ Currently the available functions are:
 - Deleting all records
 - Change password key
 
-At the moment it has only been tested on Windows.
+At the moment it has only been tested on Windows, but it includes support for linux and mac os x.
+
+pyAesCrypt and pandas are required. Please install them or run check_packages.py for more information
