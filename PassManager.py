@@ -92,7 +92,6 @@ def create_logins_file(key):
 
 def new_token():
     key = getpass("Please enter your new key: ")
-    key_conf = key
     
     while True:
         if len(key) < 8:
@@ -102,7 +101,6 @@ def new_token():
                 break
             else:
                 key = key_conf
-                key_conf = ""
                 
         else:
             key_conf = getpass("Confirm your key: ")
@@ -193,6 +191,7 @@ def read_csv(csv_file):
     pd.options.display.max_columns = len(df.columns)
     pd.set_option('display.expand_frame_repr', False)
     print(df)
+
 
 def readall_passwords(logins_f, key):
     encrypted_logins = logins_f
@@ -300,7 +299,7 @@ def edit_record(logins_f, key, columns):
         print("Column not found")
         
         try:
-            pos = int(input("Enter the position of the column (1-%s): " % length(columns))) - 1
+            pos = int(input("Enter the position of the column (1-%s): " % len(columns))) - 1
             found = True
         except IndexError:
             print("Column not found")
@@ -517,7 +516,7 @@ def import_backup(key, token_f, saved_logins_f):
             else: # if os_sys in ["macosx darwin linux"]:
                 path = input("Could not find file, type the location of the file /Path/To/Folder/")
                 
-            if os.path.exists(saved_logins_path):
+            if os.path.exists(path):
                 print("saved_logins file found")
                 saved_logins_path = path + saved_l_name
                 saved_logins_file = open(saved_logins_path, "r")
@@ -558,7 +557,6 @@ def import_backup(key, token_f, saved_logins_f):
                     if not os.path.exists(path + token_name):
                         exit("Could not find file")
                 
-                
             backup_token = open(token_path, "r").read()
             print("Token file found")
             abc = 0
@@ -568,7 +566,8 @@ def import_backup(key, token_f, saved_logins_f):
                 backup_key = getpass("Keys dont match, plese try again:")
                 print(backup_token, hash256(backup_key))
                 if abc == 3:
-                    print("If you have forgotten the key type leave to exit the backup import, or type another key to try again.")
+                    print("If you have forgotten the key type leave to exit the backup import,"
+                          " or type another key to try again.")
                     exit_ = getpass(": ")
                     if exit_.lower() != "leave":
                         backup_key = exit_
@@ -591,7 +590,7 @@ def import_backup(key, token_f, saved_logins_f):
 
 def add_new_column(saved_logins_f, key):
     column_name = input("Name for the new column: ")
-    while (not column_name or column_name.isspace()):
+    while not column_name or column_name.isspace():
         print("Column name cannot be left blank")
         print("To exit type _exit_")
         column_name = input("Name for the new column: ")
@@ -604,13 +603,7 @@ def add_new_column(saved_logins_f, key):
             x = 0
 
             for row in unenc_f:
-                
-                # if "\n" in row:
-                   # n = ""
-                # else:
                 n = "\n"
-                
-                
                 if x == 0:
                     x += 1
                     new_row = (row[:-1] + ",%s" % column_name + n)
@@ -619,6 +612,7 @@ def add_new_column(saved_logins_f, key):
                     new_row = row[:-1] + "," + n
                     file.write(new_row)
 
+                del x
                 file.flush()
 
         encrypt_file("temp", saved_logins_f.name, key)
@@ -636,7 +630,7 @@ def delete_column(saved_logins_f, key):
     header_list = header.split(",")
     
     for item in header_list:
-        print(item, end = " ")
+        print(item, end=" ")
     else:
         print("")
         
@@ -647,7 +641,7 @@ def delete_column(saved_logins_f, key):
     with open("temp","r") as source:
         rdr = csv.reader( source )
         with open("result","w") as result:
-            wtr = csv.writer( result )
+            wtr = csv.writer(result)
             for r in rdr:
                 write = r[:(index2remove)] + r[(index2remove + 1):]
                 wtr.writerow( write )
@@ -664,8 +658,16 @@ def get_columns(saved_logins_f, key):
             header = row[:-1].split(",")
             break
     return [i.lower() for i in header]
-    
-    
+
+
+def check_appropiate_data(input, data_type, message="That data wasnt appropiate, please type it again", possible_values = ""):
+    accepted_types = ("number", "text")
+    if data_type in accepted_types:
+        if data_type == "number":
+            def x(x): return isinstance(x, int)
+        elif data_type == "text":
+            pass
+
 
 version = "v0.1.0" 
 
@@ -681,7 +683,7 @@ if __name__ == "__main__":
         if clear_command.lower() != "skip":
             def clear_console(): os.system(clear_command)
         else:
-            print("App may not function propetly without the command.")
+            print("App may not function properly without the command.")
             sleep(2)
 
     clear_console()
@@ -756,5 +758,5 @@ if __name__ == "__main__":
             print("'%s' isn't a supported option" % option)
             x = input("\nPress Enter to continue")
 
-    key_ = ""
+    del key_
     clear_console()
