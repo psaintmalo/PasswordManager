@@ -1,3 +1,7 @@
+v0.2.0
+- Added FTP support ( Polishing required )
+- Bug fixes
+
 v0.1.0
 - Option to add/remove columns
 - Added new security protocol to check the code hasnt been modified

@@ -3,12 +3,16 @@ print("Loading os")
 import os
 print("Loading csv")
 import csv
+print("Loading sys")
+import sys
 print("Loading shutil")
 import shutil
-print("Loading smtplib")
-import smtplib
+# print("Loading smtplib")
+# import smtplib
 print("Loading pandas")
 import pandas as pd
+print("Loading FTP")
+from ftplib import FTP
 print("Loading time")
 from time import sleep
 print("Loading random")
@@ -17,7 +21,7 @@ print("Loading getpass")
 from getpass import getpass
 print("Loading platform")
 from platform import system
-print("Loading haslib")
+print("Loading hashlib")
 from hashlib import sha3_512
 print("Loading datetime")
 from datetime import datetime
@@ -25,10 +29,12 @@ print("Loading checker")
 from checker import check_h, warning_msg
 print("Loading pyAesCrypt")
 from pyAesCrypt import encryptFile, decryptFile
+
 print("Loading complete")
 
 
-def double_check(first_promnt="Key: ", confirm_promnt="Confirm key: ", dont_match_promt="Keys don't match\n", attempts_limit=3):
+def double_check(first_promnt="Key: ", confirm_promnt="Confirm key: ", dont_match_promt="Keys don't match\n"
+                 , attempts_limit=3):
     y = 0
     key1 = getpass(first_promnt)
     key2 = getpass(confirm_promnt)
@@ -51,6 +57,7 @@ def decrypt_file(encrypted_in, decrypted_out, key):
     decryptFile(encrypted_in, decrypted_out, key, 1024*64)
 
 
+'''
 def send_mail_copy(saved_logins, token, key):  # WORK NEEDED TO SEND ATTACHMENT FO FILES -------------------------------
     print("Currently this option only works with gmail, and you have to turn on 'Allow less secure apps' ", end="\n\n")
     en = input("Would you like to send the files encrypted? (Recommended option is Y) Y/n")
@@ -80,6 +87,7 @@ def send_mail_copy(saved_logins, token, key):  # WORK NEEDED TO SEND ATTACHMENT 
         receiver_mail,
         message)
     server.quit()
+'''
 
 
 def create_logins_file(key):
@@ -128,14 +136,14 @@ def sc_files():  # Check password files and key_hash present and returns their v
         logins = create_logins_file(key)
 
     elif not os.path.exists("token"):
-        option = input("token file is missing, would you like to format all data? Y/n: ")
-        if option.lower() == "y":
+        option_ = input("token file is missing, would you like to format all data? Y/n: ")
+        if option_.lower() == "y":
             key = new_token()
             token = open("token", "w")
             token.write(hash256(key))
             logins = create_logins_file(key)
             token.close()
-        elif option.lower() == "n":
+        else:
             print("Cannot continue without the token file")
             exit(0)
 
@@ -201,11 +209,11 @@ def readall_passwords(logins_f, key):
     os.remove(temp_fn)
 
 
-def csv_value_change(x, y, value, file_name):
+def csv_value_change(x_, y, value, file_name):
     file = open(file_name, "r")
     csv_read = csv.reader(file)
     lines = list(csv_read)
-    lines[x + 1][y] = value
+    lines[x_ + 1][y] = value
     new_csv_ = open(file.name, "w", newline="")
     writer = csv.writer(new_csv_)
     writer.writerows(lines)
@@ -216,17 +224,18 @@ def generate_random_pass(length):
     special_chars = "!@#$%^&*()/-_.:?+"
     nums = "01234567890"
     caps = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    x = 0
+    ran_pass = ""
+    x_ = 0
     y = 0
     z = 0
-    while x == 0 or y == 0 or z == 0:  # Makes sure at least one number and one special character is present
-        x = 0
+    while x_ == 0 or y == 0 or z == 0:  # Makes sure at least one number and one special character is present
+        x_ = 0
         y = 0
         z = 0
         ran_pass = "".join(sample(chars, length))
         for char in ran_pass:
             if char in special_chars:
-                x += 1
+                x_ += 1
             elif char in nums:
                 y += 1
             elif char in caps:
@@ -235,9 +244,9 @@ def generate_random_pass(length):
     return ran_pass
 
 
-def add_new_record(logins_f, key, columns):
+def add_new_record(logins_f, key, columns_):
     values = []
-    for field in columns:
+    for field in columns_:
         if field.lower() != "password":
             values.append(input("%s: " % field.capitalize()))
         else:
@@ -263,7 +272,7 @@ def add_new_record(logins_f, key, columns):
         if "," in value:
             pos = values.index(value)
             print("\n',' may not be entered into any field")
-            value = input("New value for %s: " % (columns[pos]))
+            value = input("New value for %s: " % (columns_[pos]))
             values[pos] = value
     
     write_str = ""
@@ -279,7 +288,8 @@ def add_new_record(logins_f, key, columns):
     os.remove(new_file.name)
 
 
-def edit_record(logins_f, key, columns):
+def edit_record(logins_f, key, columns_):
+    pos = 0
     unenc = "unenc"
     encrypted_logins = logins_f.name
     decrypt_file(encrypted_logins, unenc, key)
@@ -293,13 +303,13 @@ def edit_record(logins_f, key, columns):
     field_to_change = input("Name of the column to edit: ") 
 
     try:
-        pos = columns.index(field_to_change.lower())
+        pos = columns_.index(field_to_change.lower())
         found = True
     except ValueError:
         print("Column not found")
         
         try:
-            pos = int(input("Enter the position of the column (1-%s): " % len(columns))) - 1
+            pos = int(input("Enter the position of the column (1-%s): " % len(columns_))) - 1
             found = True
         except IndexError:
             print("Column not found")
@@ -307,8 +317,8 @@ def edit_record(logins_f, key, columns):
         
     if found:
     
-        if columns[pos].lower != "password":
-            new_value = input("New value for '%s': " % columns[pos])
+        if columns_[pos].lower != "password":
+            new_value = input("New value for '%s': " % columns_[pos])
         else:
         
             option_ = input("Would you like a new random password? Y/n: ")
@@ -325,7 +335,7 @@ def edit_record(logins_f, key, columns):
         
         while "," in new_value:
             print("\nValues cannot contain ','")
-            new_value = input("New value for '%s': " % columns[pos])
+            new_value = input("New value for '%s': " % columns_[pos])
         csv_value_change(record_to_change, pos, new_value, unenc)
 
         encrypt_file(unenc, "saved_logins", key)
@@ -469,7 +479,8 @@ def local_backup(logins_f, token_f, key):
         print("Copying decrypted files to " + path + backup_name)
         shutil.copy("temp", path + backup_name)
         os.remove("temp")
-        x = input("Press enter to continue")
+        x_ = input("Press enter to continue")
+        del x_
     else:
         print("Unexpected error, please try again")
 
@@ -496,8 +507,9 @@ def import_backup(key, token_f, saved_logins_f):
             
         if os_sys in ["windows"]:
             path = home_path + "\\Documents\\PasswordManager_Backup\\"
-            
-        else: # if os_sys in ["macosx darwin linux"]:
+
+        #  if os_sys in ["macosx darwin linux"]:
+        else:
             path = home_path + "/Documents/PasswordManager_Backup/"
             
         saved_l_name = input("Please type the name of the saved_logins backup file: ")
@@ -512,8 +524,8 @@ def import_backup(key, token_f, saved_logins_f):
             
             if os_sys in ["windows"]:
                 path = input("Could not find file, type the location of the file C:\\Path\\To\\Folder\\")
-            
-            else: # if os_sys in ["macosx darwin linux"]:
+            #  if os_sys in ["macosx darwin linux"]:
+            else:
                 path = input("Could not find file, type the location of the file /Path/To/Folder/")
                 
             if os.path.exists(path):
@@ -524,6 +536,7 @@ def import_backup(key, token_f, saved_logins_f):
         try:
             for line in saved_logins_file:
                 decrypted = True
+                del line
                 break
         except UnicodeDecodeError:
             decrypted = False
@@ -550,8 +563,8 @@ def import_backup(key, token_f, saved_logins_f):
                     
                     if os_sys in ["windows"]:
                         path = input("Could not find file, type the location of the file C:\\Path\\To\\Folder\\")
-            
-                    else: # if os_sys in ["macosx darwin linux"]:
+                    #  if os_sys in ["macosx darwin linux"]:
+                    else:
                         path = input("Could not find file, type the location of the file /Path/To/Folder/")
                         
                     if not os.path.exists(path + token_name):
@@ -586,6 +599,7 @@ def import_backup(key, token_f, saved_logins_f):
                 print("Import succesful")
         
     x = input("Press enter to continue")
+    del x
 
 
 def add_new_column(saved_logins_f, key):
@@ -638,13 +652,13 @@ def delete_column(saved_logins_f, key):
     
     index2remove = header_list.index(column_name)
         
-    with open("temp","r") as source:
-        rdr = csv.reader( source )
-        with open("result","w") as result:
+    with open("temp", "r") as source:
+        rdr = csv.reader(source)
+        with open("result", "w") as result:
             wtr = csv.writer(result)
             for r in rdr:
-                write = r[:(index2remove)] + r[(index2remove + 1):]
-                wtr.writerow( write )
+                write = r[:index2remove] + r[(index2remove + 1):]
+                wtr.writerow(write)
             
     encrypt_file("result", "saved_logins", key)
     os.remove("result")
@@ -660,7 +674,8 @@ def get_columns(saved_logins_f, key):
     return [i.lower() for i in header]
 
 
-def check_appropiate_data(input, data_type, message="That data wasnt appropiate, please type it again", possible_values = ""):
+def check_appropiate_data(input, data_type, message="That data wasnt appropiate, please type it again",
+                          possible_values = ""):
     accepted_types = ("number", "text")
     if data_type in accepted_types:
         if data_type == "number":
@@ -669,7 +684,144 @@ def check_appropiate_data(input, data_type, message="That data wasnt appropiate,
             pass
 
 
-version = "v0.1.0" 
+def configure_ftp(key):
+    configure = True
+    if os.path.exists("ftp.conf"):
+        override = input("This will override your old ftp configuration file, do you want to continue (Y/n): ")
+        if override.lower() == "n":
+            configure = False
+
+    if configure:
+
+        config = []
+
+        server = input("Enter IP or domain of the ftp server: ")
+
+        port = input("Enter the port of the ftp server (default = 21): ")
+        if port == "":
+            port = "21"
+
+        user = input("Enter the username of the ftp server (Leave blank for none): ")
+        if user != "":
+            passw = input("Enter password for the ftp server: ")
+            user_tf = True
+        else:
+            passw = ""
+            user_tf = False
+
+        config.append('server = "%s"\n' % server)
+        config.append('port = "%s"\n' % port)
+        config.append('user = "%s"\n' % user)
+        config.append('passw = "%s"\n' % passw)
+        config.append('user_tf = %s' % user_tf)
+
+        with open("conf", "w+") as conf:
+            for line in range(len(config)):
+                conf.write(config[line])
+
+        encrypt_file("conf", "ftp.conf", key)
+        os.remove("conf")
+
+
+def pull_ftp(server, port, user, passw):
+    try:
+
+        x_ = True
+
+        print("Connecting to server")
+        ftp = FTP()
+        ftp.connect(server, int(port))
+        print("Logging in")
+        ftp.login(user, passw)
+        print("Checking token")
+
+        with open("token_f", "wb") as f:
+            ftp.retrbinary("RETR " + "token", f.write)
+
+        token = open("token", "r")
+        token_f = open("token_f", "r")
+
+        if token.read() != token_f.read():
+            yn = input("Seems the key stored on the FTP Server isn't the same as the one locally,"
+                       " do you want to continue (Y/n): ").lower()
+
+            if yn == "n":
+                x_ = False
+
+        os.remove("token_f")
+
+        if x_:
+            with open("token", "wb") as f:
+                ftp.retrbinary("RETR " + "token", f.write)
+
+            with open("saved_logins", "wb") as f:
+                ftp.retrbinary("RETR " + "saved_logins", f.write)
+
+            ftp.quit()
+            print("Files retrieved successfully")
+            sleep(1)
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+        raise
+
+
+def push_ftp(server, port, user, passw):
+    try:
+        print("Connecting to server")
+        ftp = FTP()
+        ftp.connect(server, int(port))
+        print("Logging in")
+        ftp.login(user, passw)
+        print("Uploading files")
+
+        with open('token', 'rb') as f:
+            ftp.storbinary('STOR %s' % 'token', f)
+
+        with open('saved_logins', 'rb') as f:
+            ftp.storbinary('STOR %s' % 'saved_logins', f)
+
+        ftp.quit()
+        print("Files sent succesfully")
+        sleep(1)
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+        raise
+
+
+def check_ftp(server, port, user, passw):
+    try:
+        print("Connecting to server")
+        ftp = FTP()
+        ftp.connect(server, int(port))
+        print("Logging in")
+        ftp.login(user, passw)
+        print("Connection Successful")
+        sleep(2)
+
+    except:
+        print("An error has occurred")
+
+
+def load_ftp_config():
+    if os.path.exists("ftp.conf"):
+        print("FTP Configuration detected")
+        print("Loading FTP Configuration")
+        decrypt_file("ftp.conf", "ftp_conf.py", key_)
+        import ftp_conf
+        server = ftp_conf.server
+        port = ftp_conf.port
+        user = ftp_conf.user
+        passw = ftp_conf.passw
+        user_tf = ftp_conf.user_tf
+        os.remove("ftp_conf.py")
+        print("FTP Configuration successfully loaded")
+    else:
+        print("No FTP Configuration file found")
+
+    return server, port, user, passw, user_tf
+
+
+version = "v0.2.0"
 
 if __name__ == "__main__":
 
@@ -679,7 +831,7 @@ if __name__ == "__main__":
     elif os_sys in "darwin macosx linux":
         def clear_console(): os.system('clear')  # Linux and Mac
     else:
-        clear_command = input("Could not detect os, please type your console command to clear the console or type skip ")
+        clear_command = input("Could not detect os, type command to clear the console or type skip ")
         if clear_command.lower() != "skip":
             def clear_console(): os.system(clear_command)
         else:
@@ -693,11 +845,16 @@ if __name__ == "__main__":
         warning_msg()
     
     token_file, logins_file, key_ = sc_files()
-    if key_ == "":  # Checks that no key was given in the proceses above in result of missing files
+    if key_ == "":  # Checks that no key was given in the process above in result of missing files
         key_ = check_key(token_file)
-    
+
+    try:
+        server, port, user, passw, user_tf = load_ftp_config()
+    except NameError:
+        pass
+
     columns = get_columns(logins_file, key_)
-    accepted_options = "1234567890abx"
+    accepted_options = "1234567890abcdefghx"
 
     while True:  # Main loop
         clear_console()
@@ -705,9 +862,11 @@ if __name__ == "__main__":
         if warning:
             warning_msg()
         
-        print("1) Read saved logins      2) Add new record\n3) Edit existing record   4) Delete record")
-        print("5) Change key             6) Delete all files\n7) Move record            8) Create backup")
-        print("9) Import backup          A) Add new column\nB) Delete column")
+        print("1) Read saved logins         2) Add new record\n3) Edit existing record      4) Delete record")
+        print("5) Change key                6) Delete all files\n7) Move record               8) Create backup")
+        print("9) Import backup             A) Add new column\nB) Delete column             C) Configure FTP Server")
+        print("D) Test FTP Server           E) Pull from FTP Client\nF) Push to FTP Server        G) Compare FTP files")
+        print("H) Reload FTP Config")
         print("0) Exit")
         option = input("-> ", )
 
@@ -754,6 +913,19 @@ if __name__ == "__main__":
                     columns = get_columns(logins_file, key_)
                 elif option.lower() == "x":
                     decrypt_file("saved_logins", "debuging", key_)
+                elif option.lower() == "c":
+                    configure_ftp(key_)
+                elif option.lower() == "h":
+                    try:
+                        server, port, user, passw, user_tf = load_ftp_config()
+                    except NameError:
+                        pass
+                elif option.lower() == "f":
+                    push_ftp(server, port, user, passw)
+                elif option.lower() == "e":
+                    pull_ftp(server, port, user, passw)
+                elif option.lower() == "d":
+                    check_ftp(server, port, user, passw)
         else:
             print("'%s' isn't a supported option" % option)
             x = input("\nPress Enter to continue")
