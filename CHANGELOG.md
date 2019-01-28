@@ -1,3 +1,6 @@
+v0.2.2
+- Bug fixes
+
 v0.2.1
 - Auto Sync with FTP Server
 - Minor fixes

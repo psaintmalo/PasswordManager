@@ -773,7 +773,9 @@ def pull_ftp(server, port, user, passw):
             sleep(1)
     except:
         print("Unexpected error:", sys.exc_info()[0])
-        raise
+        print("Are there any files at the ftp server?")
+        x_ = input("Press enter to continue")
+        del x_
 
     if exit_a:
         exit("Its necessary to restart the program")
@@ -883,8 +885,10 @@ if __name__ == "__main__":
     # Check and if existent, load the ftp configuration
     try:
         server, port, user, passw, auto_sync = load_ftp_config(key_)
+        ftp_ = True
     except:
         auto_sync = False
+        ftp_ = False
 
     # Initial pull if auto sync is enabled
     if auto_sync:
@@ -956,19 +960,28 @@ if __name__ == "__main__":
                 #    decrypt_file("saved_logins", "debugging", key_)
                 elif option.lower() == "c":
                     configure_ftp(key_)
-                    pull_ftp(server, port, user, passw)
-                elif option.lower() == "h":
                     try:
                         server, port, user, passw, auto_sync = load_ftp_config(key_)
                     except NameError:
                         pass
-                elif option.lower() == "f":
-                    push_ftp(server, port, user, passw)
-                elif option.lower() == "e":
-                    wx = pull_ftp(server, port, user, passw)
-                    del wx
-                elif option.lower() == "d":
-                    check_ftp(server, port, user, passw)
+                    ftp_ = True
+                if ftp_:
+                    if option.lower() == "h":
+                        try:
+                            server, port, user, passw, auto_sync = load_ftp_config(key_)
+                        except NameError:
+                            pass
+                    elif option.lower() == "f":
+                        push_ftp(server, port, user, passw)
+                    elif option.lower() == "e":
+                        wx = pull_ftp(server, port, user, passw)
+                        del wx
+                    elif option.lower() == "d":
+                        check_ftp(server, port, user, passw)
+                else:
+                    print("Please configure FTP first")
+                    x = input("\nPress Enter to continue")
+                    del x
         else:
             print("'%s' isn't a supported option" % option)
             x = input("\nPress Enter to continue")
