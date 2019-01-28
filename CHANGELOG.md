@@ -1,3 +1,7 @@
+v0.2.1
+- Auto Sync with FTP Server
+- Minor fixes
+
 v0.2.0
 - Added FTP support ( Polishing required )
 - Bug fixes
