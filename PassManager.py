@@ -30,6 +30,8 @@ from checker import check_h, warning_msg
 print("Loading pyAesCrypt")
 from pyAesCrypt import encryptFile, decryptFile
 
+shutil.rmtree("__pycache__")
+
 print("Loading complete")
 
 
@@ -269,7 +271,7 @@ def add_new_record(logins_f, key, columns_):
             values.append(password)
     
     for value in values:
-        if "," in value:
+        while "," in value:
             pos = values.index(value)
             print("\n',' may not be entered into any field")
             value = input("New value for %s: " % (columns_[pos]))
@@ -360,7 +362,7 @@ def delete_record(logins_f, key):
         temp_file.close()
         os.remove(unenc.name)
         encrypt_file(temp_file.name, logins_file.name, key)
-        # os.remove(temp_file.name)
+        os.remove(temp_file.name)
 
 
 def change_key(key):
@@ -479,8 +481,7 @@ def local_backup(logins_f, token_f, key):
         print("Copying decrypted files to " + path + backup_name)
         shutil.copy("temp", path + backup_name)
         os.remove("temp")
-        x_ = input("Press enter to continue")
-        del x_
+        input("Press enter to continue")
     else:
         print("Unexpected error, please try again")
 
@@ -599,8 +600,7 @@ def import_backup(key, token_f, saved_logins_f):
                     os.remove(saved_logins_path)
                 print("Import successful")
         
-    x_ = input("Press enter to continue")
-    del x_
+    input("Press enter to continue")
 
 
 def add_new_column(saved_logins_f, key):
@@ -649,26 +649,30 @@ def delete_column(saved_logins_f, key):
     else:
         print("")
         
-    column_name = input("Name of the column you want to remove: ")
-    
-    index2remove = header_list.index(column_name)
-        
-    with open("temp", "r") as source:
-        rdr = csv.reader(source)
-        with open("result", "w") as result:
-            wtr = csv.writer(result)
-            for r in rdr:
-                write = r[:index2remove] + r[(index2remove + 1):]
-                wtr.writerow(write)
-            
-    encrypt_file("result", "saved_logins", key)
-    os.remove("result")
-    os.remove("temp")
+    column_name = input("\nName of the column you want to remove: ")
+    try:
+        index2remove = header_list.index(column_name)
+
+        with open("temp", "r") as source:
+            rdr = csv.reader(source)
+            with open("result", "w") as result:
+                wtr = csv.writer(result)
+                for r in rdr:
+                    write = r[:index2remove] + r[(index2remove + 1):]
+                    wtr.writerow(write)
+
+        encrypt_file("result", "saved_logins", key)
+        os.remove("result")
+        os.remove("temp")
+    except ValueError:
+        print("That wasn't a valid column")
+        input("Press enter to continue")
 
 
 def get_columns(saved_logins_f, key):
     decrypt_file(saved_logins_f.name, "temp", key)
     with open("temp", "r") as file:
+        os.remove("temp")
         for row in file:
             header = row[:-1].split(",")
             break
@@ -774,8 +778,7 @@ def pull_ftp(server, port, user, passw):
     except:
         print("Unexpected error:", sys.exc_info()[0])
         print("Are there any files at the ftp server?")
-        x_ = input("Press enter to continue")
-        del x_
+        input("Press enter to continue")
 
     if exit_a:
         exit("Its necessary to restart the program")
@@ -840,6 +843,7 @@ def load_ftp_config(key):
         print("Loading FTP Configuration")
         decrypt_file("ftp.conf", "ftp_conf.py", key)
         import ftp_conf
+        shutil.rmtree("__pycache__")
         server = ftp_conf.server
         port = ftp_conf.port
         user = ftp_conf.user
@@ -853,7 +857,7 @@ def load_ftp_config(key):
     return server, port, user, passw, auto_sync
 
 
-version = "v0.2.1"
+version = "v0.2.3"
 
 if __name__ == "__main__":
 
@@ -886,7 +890,7 @@ if __name__ == "__main__":
     try:
         server, port, user, passw, auto_sync = load_ftp_config(key_)
         ftp_ = True
-    except:
+    except NameError:
         auto_sync = False
         ftp_ = False
 
@@ -911,7 +915,7 @@ if __name__ == "__main__":
         print("5) Change key                6) Delete all files\n7) Move record               8) Create backup")
         print("9) Import backup             A) Add new column\nB) Delete column             C) Configure FTP Server")
         print("D) Test FTP Server           E) Pull from FTP Client\nF) Push to FTP Server        G) Reload FTP Config")
-        # print("H) Compare files")
+        print("H) Show FTP configuration")
         print("0) Exit")
         option = input("-> ", )
 
@@ -986,7 +990,7 @@ if __name__ == "__main__":
             print("'%s' isn't a supported option" % option)
             x = input("\nPress Enter to continue")
 
-        if str(option).lower() in sync_options:
+        if str(option).lower() in sync_options and auto_sync:
             silent_push(server, port, user, passw)
 
     del key_
