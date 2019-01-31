@@ -1,3 +1,6 @@
+v.2.4
+- Big fixes
+
 v0.2.3
 - Bug fixes
 

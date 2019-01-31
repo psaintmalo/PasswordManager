@@ -533,6 +533,8 @@ def import_backup(key, token_f, saved_logins_f):
                 print("saved_logins file found")
                 saved_logins_path = path + saved_l_name
                 saved_logins_file = open(saved_logins_path, "r")
+            else:
+                exit("Couldn't find the file on that path")
 
         decrypted = True
         try:
@@ -552,7 +554,7 @@ def import_backup(key, token_f, saved_logins_f):
                 os.remove(saved_logins_file.name)
             with open("token", "w") as token:
                 token.write(hash256(key))
-            print("Import succesful")
+            print("Import successful")
                 
         elif not decrypted:
             print("File detected as encrypted")
@@ -710,7 +712,7 @@ def configure_ftp(key):
 
         user = input("Enter the username of the ftp server: ")
 
-        passw = input("Enter password for the ftp server: ")
+        passw = getpass("Enter password for the ftp server: ")
 
         auto_sync = input("Would you like to automatically sync with the FTP Server (Y/n): ").lower()
 
@@ -742,7 +744,7 @@ def pull_ftp(server, port, user, passw):
 
         print("Connecting to server")
         ftp = FTP()
-        ftp.connect(server, int(port))
+        print(ftp.connect(server, int(port)))
         print("Logging in")
         ftp.login(user, passw)
         print("Checking token")
@@ -805,8 +807,13 @@ def push_ftp(server, port, user, passw):
         print("Files sent succesfully")
         sleep(1)
     except:
-        print("Unexpected error:", sys.exc_info()[0])
-        raise
+        error = str(sys.exc_info()[1])
+        print("Unexpected error:", error)
+
+        if "[Errno -2] Name or service not known" in error:
+            print("Error connecting to the server")
+
+        input("Press enter to continue")
 
 
 def silent_push(server, port, user, passw):
@@ -823,38 +830,27 @@ def silent_push(server, port, user, passw):
         pass
 
 
-def check_ftp(server, port, user, passw):
-    try:
-        print("Connecting to server")
-        ftp = FTP()
-        ftp.connect(server, int(port))
-        print("Logging in")
-        ftp.login(user, passw)
-        print("Connection Successful")
-        sleep(2)
-
-    except:
-        print("An error has occurred")
-
-
 def load_ftp_config(key):
     if os.path.exists("ftp.conf"):
         print("FTP Configuration detected")
         print("Loading FTP Configuration")
         decrypt_file("ftp.conf", "ftp_conf.py", key)
         import ftp_conf
-        shutil.rmtree("__pycache__")
+        if os.path.exists("__pycache__"):
+            shutil.rmtree("__pycache__")
         server = ftp_conf.server
         port = ftp_conf.port
         user = ftp_conf.user
         passw = ftp_conf.passw
         auto_sync = ftp_conf.auto_sync
+        ftp = True
         os.remove("ftp_conf.py")
-        print("FTP Configuration successfully loaded")
+        print("FTP configuration loaded")
     else:
-        print("No FTP Configuration file found")
+        print("No FTP configuration file found")
+        server, port, user, passw, auto_sync, ftp = "", "", "", "", False, False
 
-    return server, port, user, passw, auto_sync
+    return server, port, user, passw, auto_sync, ftp
 
 
 version = "v0.2.3"
@@ -887,12 +883,7 @@ if __name__ == "__main__":
         key_ = check_key(token_file)
 
     # Check and if existent, load the ftp configuration
-    try:
-        server, port, user, passw, auto_sync = load_ftp_config(key_)
-        ftp_ = True
-    except NameError:
-        auto_sync = False
-        ftp_ = False
+    server, port, user, passw, auto_sync, ftp_ = load_ftp_config(key_)
 
     # Initial pull if auto sync is enabled
     if auto_sync:
@@ -902,21 +893,35 @@ if __name__ == "__main__":
             auto_sync = False
 
     columns = get_columns(logins_file, key_)
-    accepted_options = "1234567890abcdefghx"
+    accepted_options = "1234567890abcdef"
     sync_options = "23457ab"
+
+    p_options = """
+        1) Read saved logins         2) Add new record
+        3) Edit existing record      4) Delete record
+        5) Change key                6) Delete all files
+        7) Move record               8) Create backup
+        9) Import backup             A) Add new column
+        B) Delete column
+
+                         ----FTP----
+
+        D) Pull from Server          E) Push from Server
+        C) Configure FTP             F) Edit FTP Config
+        G) Reload FTP Config
+
+        0) Exit
+        
+            """
 
     while True:  # Main loop
         clear_console()
         
         if warning:
             warning_msg()
-        
-        print("1) Read saved logins         2) Add new record\n3) Edit existing record      4) Delete record")
-        print("5) Change key                6) Delete all files\n7) Move record               8) Create backup")
-        print("9) Import backup             A) Add new column\nB) Delete column             C) Configure FTP Server")
-        print("D) Test FTP Server           E) Pull from FTP Client\nF) Push to FTP Server        G) Reload FTP Config")
-        print("H) Show FTP configuration")
-        print("0) Exit")
+
+        print(p_options)
+
         option = input("-> ", )
 
         if option.isdigit():
@@ -954,44 +959,42 @@ if __name__ == "__main__":
                 elif option == 0:
                     break
             else:
-                if option.lower() == "a":
+                option = option.lower()
+                if option == "a":
                     add_new_column(logins_file, key_)
                     columns = get_columns(logins_file, key_)
-                elif option.lower() == "b":
+                elif option == "b":
                     delete_column(logins_file, key_)
                     columns = get_columns(logins_file, key_)
                 # elif option.lower() == "x":
                 #    decrypt_file("saved_logins", "debugging", key_)
-                elif option.lower() == "c":
+                elif option == "c":
                     configure_ftp(key_)
-                    try:
-                        server, port, user, passw, auto_sync = load_ftp_config(key_)
-                    except NameError:
-                        pass
-                    ftp_ = True
+                    server, port, user, passw, auto_sync, ftp_ = load_ftp_config(key_)
                 if ftp_:
-                    if option.lower() == "h":
-                        try:
-                            server, port, user, passw, auto_sync = load_ftp_config(key_)
-                        except NameError:
-                            pass
-                    elif option.lower() == "f":
+                    if option == "f":
+                        server, port, user, passw, auto_sync, ftp_ = load_ftp_config(key_)
+                    elif option == "f":
                         push_ftp(server, port, user, passw)
-                    elif option.lower() == "e":
-                        wx = pull_ftp(server, port, user, passw)
-                        del wx
-                    elif option.lower() == "d":
-                        check_ftp(server, port, user, passw)
+                    elif option == "e":
+                        pull_ftp(server, port, user, passw)
                 else:
                     print("Please configure FTP first")
-                    x = input("\nPress Enter to continue")
-                    del x
+                    input("\nPress Enter to continue")
         else:
             print("'%s' isn't a supported option" % option)
-            x = input("\nPress Enter to continue")
+            input("\nPress Enter to continue")
 
         if str(option).lower() in sync_options and auto_sync:
             silent_push(server, port, user, passw)
 
     del key_
     clear_console()
+
+files = ["temp", "unenc", "results", "conf", "__pycache__"]
+for file in files:
+    if os.path.exists(file):
+        try:
+            os.remove(file)
+        except IsADirectoryError:
+            shutil.rmtree(file)
