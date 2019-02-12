@@ -30,8 +30,6 @@ from checker import check_h, warning_msg
 print("Loading pyAesCrypt")
 from pyAesCrypt import encryptFile, decryptFile
 
-shutil.rmtree("__pycache__")
-
 print("Loading complete")
 
 
@@ -60,7 +58,7 @@ def decrypt_file(encrypted_in, decrypted_out, key):
 
 
 '''
-def send_mail_copy(saved_logins, token, key):  # WORK NEEDED TO SEND ATTACHMENT FO FILES -------------------------------
+def send_mail_copy(saved_logins, token, key):
     print("Currently this option only works with gmail, and you have to turn on 'Allow less secure apps' ", end="\n\n")
     en = input("Would you like to send the files encrypted? (Recommended option is Y) Y/n")
     if en.lower() == "y":
@@ -534,7 +532,7 @@ def import_backup(key, token_f, saved_logins_f):
                 saved_logins_path = path + saved_l_name
                 saved_logins_file = open(saved_logins_path, "r")
             else:
-                exit("Couldn't find the file on that path")
+                exit("Couldn't find path to file")
 
         decrypted = True
         try:
@@ -652,6 +650,7 @@ def delete_column(saved_logins_f, key):
         print("")
         
     column_name = input("\nName of the column you want to remove: ")
+
     try:
         index2remove = header_list.index(column_name)
 
@@ -666,6 +665,7 @@ def delete_column(saved_logins_f, key):
         encrypt_file("result", "saved_logins", key)
         os.remove("result")
         os.remove("temp")
+
     except ValueError:
         print("That wasn't a valid column")
         input("Press enter to continue")
@@ -674,10 +674,10 @@ def delete_column(saved_logins_f, key):
 def get_columns(saved_logins_f, key):
     decrypt_file(saved_logins_f.name, "temp", key)
     with open("temp", "r") as file:
-        os.remove("temp")
         for row in file:
             header = row[:-1].split(",")
             break
+    os.remove("temp")
     return [i.lower() for i in header]
 
 
@@ -714,7 +714,8 @@ def configure_ftp(key):
 
         passw = getpass("Enter password for the ftp server: ")
 
-        auto_sync = input("Would you like to automatically sync with the FTP Server (Y/n): ").lower()
+        auto_sync = input("Would you like to automatically sync with the FTP Server (May impact performance)"
+                          " (Y/n): ").lower()
 
         if auto_sync == "y":
             auto_sync = True
@@ -733,6 +734,8 @@ def configure_ftp(key):
 
         encrypt_file("conf", "ftp.conf", key)
         os.remove("conf")
+        print("Changes will not appear until the program is restarted")
+        input("\nPress enter to continue")
 
 
 def pull_ftp(server, port, user, passw):
@@ -742,12 +745,12 @@ def pull_ftp(server, port, user, passw):
         cancel = True
         exit_a = False
 
-        print("Connecting to server")
+        print("\nConnecting to server\n")
         ftp = FTP()
         print(ftp.connect(server, int(port)))
-        print("Logging in")
-        ftp.login(user, passw)
-        print("Checking token")
+        print("\nLogging in\n")
+        print(ftp.login(user, passw))
+        print("\nChecking token")
 
         with open("token_f", "wb") as f:
             ftp.retrbinary("RETR " + "token", f.write)
@@ -779,7 +782,7 @@ def pull_ftp(server, port, user, passw):
             sleep(1)
     except:
         print("Unexpected error:", sys.exc_info()[0])
-        print("Are there any files at the ftp server?")
+        # print("Are there any files at the ftp server?")
         input("Press enter to continue")
 
     if exit_a:
@@ -792,6 +795,7 @@ def push_ftp(server, port, user, passw):
     try:
         print("Connecting to server")
         ftp = FTP()
+
         ftp.connect(server, int(port))
         print("Logging in")
         ftp.login(user, passw)
@@ -807,12 +811,7 @@ def push_ftp(server, port, user, passw):
         print("Files sent succesfully")
         sleep(1)
     except:
-        error = str(sys.exc_info()[1])
-        print("Unexpected error:", error)
-
-        if "[Errno -2] Name or service not known" in error:
-            print("Error connecting to the server")
-
+        print("Unexpected error:", sys.exc_info()[0])
         input("Press enter to continue")
 
 
@@ -830,27 +829,37 @@ def silent_push(server, port, user, passw):
         pass
 
 
+def check_ftp(server, port, user, passw):
+    try:
+        print("Connecting to server\n")
+        ftp = FTP()
+        print(ftp.connect(server, int(port)))
+        print("\nLogging in\n")
+        print(ftp.login(user, passw))
+        ftp.quit()
+        input("\nPress enter to continue")
+    except:
+        print("Unexpected error: ", sys.exc_info()[0])
+        input("Press enter to continue")
+
+
 def load_ftp_config(key):
     if os.path.exists("ftp.conf"):
         print("FTP Configuration detected")
         print("Loading FTP Configuration")
         decrypt_file("ftp.conf", "ftp_conf.py", key)
         import ftp_conf
-        if os.path.exists("__pycache__"):
-            shutil.rmtree("__pycache__")
         server = ftp_conf.server
         port = ftp_conf.port
         user = ftp_conf.user
         passw = ftp_conf.passw
         auto_sync = ftp_conf.auto_sync
-        ftp = True
         os.remove("ftp_conf.py")
-        print("FTP configuration loaded")
     else:
-        print("No FTP configuration file found")
-        server, port, user, passw, auto_sync, ftp = "", "", "", "", False, False
+        print("No FTP Configuration file found")
+        server, port, user, passw, auto_sync = "", "", "", "", ""
 
-    return server, port, user, passw, auto_sync, ftp
+    return server, port, user, passw, auto_sync
 
 
 version = "v0.2.3"
@@ -883,7 +892,12 @@ if __name__ == "__main__":
         key_ = check_key(token_file)
 
     # Check and if existent, load the ftp configuration
-    server, port, user, passw, auto_sync, ftp_ = load_ftp_config(key_)
+    try:
+        server, port, user, passw, auto_sync = load_ftp_config(key_)
+        ftp_ = True
+    except:
+        auto_sync = False
+        ftp_ = False
 
     # Initial pull if auto sync is enabled
     if auto_sync:
@@ -893,26 +907,8 @@ if __name__ == "__main__":
             auto_sync = False
 
     columns = get_columns(logins_file, key_)
-    accepted_options = "1234567890abcdef"
+    accepted_options = "1234567890abcdefghx"
     sync_options = "23457ab"
-
-    p_options = """
-        1) Read saved logins         2) Add new record
-        3) Edit existing record      4) Delete record
-        5) Change key                6) Delete all files
-        7) Move record               8) Create backup
-        9) Import backup             A) Add new column
-        B) Delete column
-
-                         ----FTP----
-
-        D) Pull from Server          E) Push from Server
-        C) Configure FTP             F) Edit FTP Config
-        G) Reload FTP Config
-
-        0) Exit
-        
-            """
 
     while True:  # Main loop
         clear_console()
@@ -920,8 +916,25 @@ if __name__ == "__main__":
         if warning:
             warning_msg()
 
-        print(p_options)
+        option_msg = """
+ 1) Read saved logins         2) Add new record
+ 3) Edit existing record      4) Delete record
+ 5) Change key                6) Delete all files
+ 7) Move record               8) Create backup
+ 9) Import backup             A) Add new column
+ B) Delete column
 
+       --------------- FTP ---------------
+
+ C) Configure FTP Server      D) Test FTP Server
+ E) Pull from FTP Client      F) Push to FTP Server 
+ G) Reload FTP Config
+        
+ 0) Exit
+
+        """
+        
+        print(option_msg)
         option = input("-> ", )
 
         if option.isdigit():
@@ -959,25 +972,32 @@ if __name__ == "__main__":
                 elif option == 0:
                     break
             else:
-                option = option.lower()
-                if option == "a":
+                if option.lower() == "a":
                     add_new_column(logins_file, key_)
                     columns = get_columns(logins_file, key_)
-                elif option == "b":
+                elif option.lower() == "b":
                     delete_column(logins_file, key_)
                     columns = get_columns(logins_file, key_)
                 # elif option.lower() == "x":
                 #    decrypt_file("saved_logins", "debugging", key_)
-                elif option == "c":
+                elif option.lower() == "c":
                     configure_ftp(key_)
-                    server, port, user, passw, auto_sync, ftp_ = load_ftp_config(key_)
+                    try:
+                        server, port, user, passw, auto_sync = load_ftp_config(key_)
+                        ftp_ = True
+                    except NameError:
+                        auto_sync = False
+                        ftp_ = False
                 if ftp_:
-                    if option == "f":
-                        server, port, user, passw, auto_sync, ftp_ = load_ftp_config(key_)
-                    elif option == "f":
+                    if option.lower() == "f":
                         push_ftp(server, port, user, passw)
-                    elif option == "e":
-                        pull_ftp(server, port, user, passw)
+                    elif option.lower() == "e":
+                        wx = pull_ftp(server, port, user, passw)
+                        del wx
+                    elif option.lower() == "d":
+                        check_ftp(server, port, user, passw)
+                    elif option.lower() == "g":
+                        server, port, user, passw, auto_sync = load_ftp_config(key_)
                 else:
                     print("Please configure FTP first")
                     input("\nPress Enter to continue")
@@ -991,10 +1011,10 @@ if __name__ == "__main__":
     del key_
     clear_console()
 
-files = ["temp", "unenc", "results", "conf", "__pycache__"]
-for file in files:
-    if os.path.exists(file):
-        try:
-            os.remove(file)
-        except IsADirectoryError:
+files = ["temp", "unenc", "results", "conf", "__pycache__"]		
+for file in files:		
+    if os.path.exists(file):		
+        try:		
+            os.remove(file)		
+        except IsADirectoryError:		
             shutil.rmtree(file)
