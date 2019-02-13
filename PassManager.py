@@ -722,11 +722,11 @@ def configure_ftp(key):
         else:
             auto_sync = False
 
-        config.append('server = "%s"\n' % server)
-        config.append('port = "%s"\n' % port)
-        config.append('user = "%s"\n' % user)
-        config.append('passw = "%s"\n' % passw)
-        config.append('auto_sync = %s' % auto_sync)
+        config.append('server=%s\n' % server)
+        config.append('port=%s\n' % port)
+        config.append('user=%s\n' % user)
+        config.append('passw=%s\n' % passw)
+        config.append('auto_sync=%s\n' % auto_sync)
 
         with open("conf", "w+") as conf:
             for line in range(len(config)):
@@ -734,16 +734,15 @@ def configure_ftp(key):
 
         encrypt_file("conf", "ftp.conf", key)
         os.remove("conf")
-        print("Changes will not appear until the program is restarted")
+        print("Changes may not take effect until the program is restarted")
         input("\nPress enter to continue")
 
 
 def pull_ftp(server, port, user, passw):
-    try:
 
+    try:
         x_ = True
-        cancel = True
-        exit_a = False
+        cancel = False
 
         print("\nConnecting to server\n")
         ftp = FTP()
@@ -762,11 +761,8 @@ def pull_ftp(server, port, user, passw):
             yn = input("Seems the key stored on the FTP Server isn't the same as the one locally,"
                        " do you want to continue (Y/n): ").lower()
 
-            if yn == "n":
-                cancel = False
-                x_ = False
-            else:
-                exit_a = True
+            if yn == "y":
+                cancel = True
 
         os.remove("token_f")
 
@@ -785,7 +781,7 @@ def pull_ftp(server, port, user, passw):
         # print("Are there any files at the ftp server?")
         input("Press enter to continue")
 
-    if exit_a:
+    if cancel:
         exit("Its necessary to restart the program")
 
     return cancel
@@ -839,8 +835,11 @@ def check_ftp(server, port, user, passw):
         ftp.quit()
         input("\nPress enter to continue")
     except:
-        print("Unexpected error: ", sys.exc_info()[0])
-        input("Press enter to continue")
+        print("\nUnexpected error: ", sys.exc_info()[0])
+        opt = input("Press enter to continue or 'info' to get error details: ")
+        if opt.lower() == "info":
+            print("\n    -------- Error Info -------- \n")
+            raise
 
 
 def load_ftp_config(key):
@@ -848,24 +847,51 @@ def load_ftp_config(key):
         print("FTP Configuration detected")
         print("Loading FTP Configuration")
         decrypt_file("ftp.conf", "ftp_conf.py", key)
-        import ftp_conf
-        server = ftp_conf.server
-        port = ftp_conf.port
-        user = ftp_conf.user
-        passw = ftp_conf.passw
-        auto_sync = ftp_conf.auto_sync
+
+        # New method for getting the data
+
+        with open("ftp_conf.py", "r") as file:
+            for line in file:
+                contents = line.split("=")
+                contents[1] = contents[1][:-1]
+                if "server" in contents:
+                    server = contents[1]
+                elif "port" in contents:
+                    port = contents[1]
+                elif "user" in contents:
+                    user = contents[1]
+                elif "passw" in contents:
+                    passw = contents[1]
+                elif "auto_sync" in contents:
+                    auto = contents[1]
+                    if auto == "True":
+                        auto_sync = True
+                    else:
+                        auto_sync = False
+
+        # Old method
+
+        # import ftp_conf
+        # server = ftp_conf.server
+        # port = ftp_conf.port
+        # user = ftp_conf.user
+        # passw = ftp_conf.passw
+        # auto_sync = ftp_conf.auto_sync
+        # del ftp_conf
+
         os.remove("ftp_conf.py")
     else:
         print("No FTP Configuration file found")
-        server, port, user, passw, auto_sync = "", "", "", "", ""
+        server, port, user, passw, auto_sync = "", "", "", "", False
 
     return server, port, user, passw, auto_sync
 
 
-version = "v0.2.3"
+version = "v0.2.4"
 
 if __name__ == "__main__":
 
+    # Defines command to clear console
     os_sys = system().lower()
     if os_sys == "windows":
         def clear_console(): os.system('cls')  # Windows
@@ -881,10 +907,17 @@ if __name__ == "__main__":
             sleep(2)
 
     clear_console()
-    
+
+    header_msg = " test" * 10
+
+    # Checks if code has been tampered, and if so warning function is defined to print the message
     warning = check_h()
     if warning:
-        warning_msg()
+        def header(): warning_msg()
+    else:
+        def header(): pass  # print(header_msg)
+
+    header()
 
     # Loads key and files
     token_file, logins_file, key_ = sc_files()
@@ -900,7 +933,7 @@ if __name__ == "__main__":
         ftp_ = False
 
     # Initial pull if auto sync is enabled
-    if auto_sync:
+    if auto_sync: ##########################################################################################
         cancel_pull = pull_ftp(server, port, user, passw)
         if cancel_pull:
             print("Canceling auto sync")
@@ -912,9 +945,8 @@ if __name__ == "__main__":
 
     while True:  # Main loop
         clear_console()
-        
-        if warning:
-            warning_msg()
+
+        header()
 
         option_msg = """
  1) Read saved logins         2) Add new record
@@ -928,14 +960,13 @@ if __name__ == "__main__":
 
  C) Configure FTP Server      D) Test FTP Server
  E) Pull from FTP Client      F) Push to FTP Server 
- G) Reload FTP Config
+ G) Reload FTP Config         H) Print Current FTP Config
         
  0) Exit
-
         """
         
         print(option_msg)
-        option = input("-> ", )
+        option = input(" -> ").replace(" ", "")
 
         if option.isdigit():
             option_is_int = True
@@ -944,9 +975,7 @@ if __name__ == "__main__":
             option_is_int = False
 
         clear_console()
-        
-        if warning:
-            warning_msg()
+        header()
 
         if str(option).lower() in accepted_options:
             if option_is_int:
@@ -986,18 +1015,21 @@ if __name__ == "__main__":
                         server, port, user, passw, auto_sync = load_ftp_config(key_)
                         ftp_ = True
                     except NameError:
-                        auto_sync = False
                         ftp_ = False
                 if ftp_:
                     if option.lower() == "f":
                         push_ftp(server, port, user, passw)
                     elif option.lower() == "e":
-                        wx = pull_ftp(server, port, user, passw)
-                        del wx
+                        pull_ftp(server, port, user, passw)
                     elif option.lower() == "d":
                         check_ftp(server, port, user, passw)
                     elif option.lower() == "g":
                         server, port, user, passw, auto_sync = load_ftp_config(key_)
+                    elif option.lower() == "h":
+                        print("Server: {serverx}\nPort: {portx}\nUser: {userx}\nPassword: {passwd} \nAuto Sync: {a_s}".
+                              format(serverx=server, portx=port, userx=user, a_s=auto_sync,
+                                     passwd="*"*len(passw)), end="\n\n")
+                        input("Press enter to continue ")
                 else:
                     print("Please configure FTP first")
                     input("\nPress Enter to continue")
@@ -1005,7 +1037,8 @@ if __name__ == "__main__":
             print("'%s' isn't a supported option" % option)
             input("\nPress Enter to continue")
 
-        if str(option).lower() in sync_options and auto_sync:
+        if str(option).lower() in sync_options and auto_sync and ftp_:
+            print("\n Syncing to FTP")
             silent_push(server, port, user, passw)
 
     del key_
@@ -1018,3 +1051,5 @@ for file in files:
             os.remove(file)		
         except IsADirectoryError:		
             shutil.rmtree(file)
+
+# FIX AUTO_SYNC
