@@ -693,6 +693,79 @@ def check_appropiate_data(input, data_type, message="That data wasn't appropriat
 '''
 
 
+def search(saved_logins_f, columns_, key):
+
+    try:
+        search_mode = int(input("Would you like to search in a column (1) or in all fields (2): "))
+    except ValueError:
+        while True:
+            try:
+                search_mode = int(input("Please select to search in a column (1) or in all fields (2): "))
+                break
+            except ValueError:
+                pass
+
+    search_term = input("\nTerm to search: ")
+
+    num_col = len(columns_)
+
+    if search_mode == 2:
+
+        decrypt_file(saved_logins_f.name, "temp", key)
+        with open("temp", "r") as temp:
+            os.remove("temp")
+            print()
+            x = -1
+
+            for line in temp:
+                if x != -1:
+                    if search_term in line:
+                        splitted = line.split(",")
+                        print("\nMatch found at line %s:" % x)
+                        for i in range(num_col):
+                            print("{}: {}    ".format(columns[i].capitalize(), splitted[i]), end="")
+                x += 1
+
+    elif search_mode == 1:
+
+        print("\n ", end="")
+        for i in columns_:
+            print(i.capitalize(), end="   ")
+        print("")
+
+        column2search = input("\nName of the column to search: ").lower()
+
+        try:
+            pos = columns_.index(column2search.lower())
+        except ValueError:
+            print("Column not found")
+            while True:
+                try:
+                    pos = int(input("Enter the position of the column (1-%s): " % len(columns_))) - 1
+                    break
+                except IndexError:
+                    print("Column not found")
+
+        decrypt_file(saved_logins_f.name, "temp", key)
+        with open("temp", "r") as temp:
+            os.remove("temp")
+            print()
+            x = -1
+            for line in temp:
+                if x != -1:
+                    splitted = line.split(",")
+                    if search_term in splitted[pos]:
+                        print("\nMatch found at line %s:" % x)
+                        for i in range(num_col):
+                            print("{}: {}    ".format(columns[i].capitalize(), splitted[i]), end="")
+                x += 1
+
+    else:
+        print("Couldnt find the specified column")
+
+    input("\nPress enter to continue")
+
+
 def configure_ftp(key):
     configure = True
     if os.path.exists("ftp.conf"):
@@ -734,8 +807,6 @@ def configure_ftp(key):
 
         encrypt_file("conf", "ftp.conf", key)
         os.remove("conf")
-        print("Changes may not take effect until the program is restarted")
-        input("\nPress enter to continue")
 
 
 def pull_ftp(server, port, user, passw):
@@ -887,7 +958,7 @@ def load_ftp_config(key):
     return server, port, user, passw, auto_sync
 
 
-version = "v0.2.4"
+version = "v0.3.0"
 
 if __name__ == "__main__":
 
@@ -940,7 +1011,7 @@ if __name__ == "__main__":
             auto_sync = False
 
     columns = get_columns(logins_file, key_)
-    accepted_options = "1234567890abcdefghx"
+    accepted_options = "1234567890abcdefghix"
     sync_options = "23457ab"
 
     while True:  # Main loop
@@ -954,13 +1025,13 @@ if __name__ == "__main__":
  5) Change key                6) Delete all files
  7) Move record               8) Create backup
  9) Import backup             A) Add new column
- B) Delete column
+ B) Delete column             C) Search
 
        --------------- FTP ---------------
 
- C) Configure FTP Server      D) Test FTP Server
- E) Pull from FTP Client      F) Push to FTP Server 
- G) Reload FTP Config         H) Print Current FTP Config
+ D) Configure FTP Server      E) Test FTP Server
+ F) Pull from FTP Client      G) Push to FTP Server 
+ H) Reload FTP Config         I) Print Current FTP Config
         
  0) Exit
         """
@@ -1007,9 +1078,11 @@ if __name__ == "__main__":
                 elif option.lower() == "b":
                     delete_column(logins_file, key_)
                     columns = get_columns(logins_file, key_)
+                elif option.lower() == "c":
+                    search(logins_file, columns, key_)
                 # elif option.lower() == "x":
                 #    decrypt_file("saved_logins", "debugging", key_)
-                elif option.lower() == "c":
+                elif option.lower() == "d":
                     configure_ftp(key_)
                     try:
                         server, port, user, passw, auto_sync = load_ftp_config(key_)
@@ -1017,15 +1090,15 @@ if __name__ == "__main__":
                     except NameError:
                         ftp_ = False
                 if ftp_:
-                    if option.lower() == "f":
+                    if option.lower() == "g":
                         push_ftp(server, port, user, passw)
-                    elif option.lower() == "e":
+                    elif option.lower() == "f":
                         pull_ftp(server, port, user, passw)
-                    elif option.lower() == "d":
+                    elif option.lower() == "e":
                         check_ftp(server, port, user, passw)
-                    elif option.lower() == "g":
-                        server, port, user, passw, auto_sync = load_ftp_config(key_)
                     elif option.lower() == "h":
+                        server, port, user, passw, auto_sync = load_ftp_config(key_)
+                    elif option.lower() == "i":
                         print("Server: {serverx}\nPort: {portx}\nUser: {userx}\nPassword: {passwd} \nAuto Sync: {a_s}".
                               format(serverx=server, portx=port, userx=user, a_s=auto_sync,
                                      passwd="*"*len(passw)), end="\n\n")
@@ -1051,5 +1124,3 @@ for file in files:
             os.remove(file)		
         except IsADirectoryError:		
             shutil.rmtree(file)
-
-# FIX AUTO_SYNC
