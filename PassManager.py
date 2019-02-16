@@ -22,11 +22,15 @@ from getpass import getpass
 print("Loading platform")
 from platform import system
 print("Loading hashlib")
+#################################
 from hashlib import sha3_512
 print("Loading datetime")
+#################################
 from datetime import datetime
 print("Loading checker")
 from checker import check_h, warning_msg
+print("Loading bcrypt")
+from bcrypt import gensalt, checkpw, hashpw
 print("Loading pyAesCrypt")
 from pyAesCrypt import encryptFile, decryptFile
 
@@ -99,7 +103,7 @@ def create_logins_file(key):
 
 
 def new_token():
-    key = getpass("Please enter your new key: ")
+    key = getpass("\nPlease enter your new key: ")
     
     while True:
         if len(key) < 8:
@@ -130,7 +134,7 @@ def sc_files():  # Check password files and key_hash present and returns their v
         print("saved_logins file is missing, creating new logins and token file.")
         key = new_token()
         token = open("token", "w")
-        token.write(hash256(key))
+        token.write(str(hashpw(key.encode("utf8"), gensalt(11))))
         token.close()
         token = open("token", "r")
         logins = create_logins_file(key)
@@ -140,7 +144,7 @@ def sc_files():  # Check password files and key_hash present and returns their v
         if option_.lower() == "y":
             key = new_token()
             token = open("token", "w")
-            token.write(hash256(key))
+            token.write(str(hashpw(key.encode("utf8"), gensalt(11))))
             logins = create_logins_file(key)
             token.close()
         else:
@@ -158,7 +162,25 @@ def hash256(key):  # Hashes a given key with sha512
 
 def check_key(token_f):  # Compares the stored hash with the user hash
     stored_hash = token_f.read()  # File not readable after creating new token file
-    if stored_hash.__len__() != 128:
+    # print(stored_hash.__len__())
+    if stored_hash.__len__() == 128:
+        print("Old hash found, checking...")
+        user_key = input("Please enter your key: ")
+        hashed_key = hash256(user_key)
+        xyz = 1
+        while hashed_key != stored_hash:
+            if xyz == 3:
+                exit("Too many tries.")
+            else:
+                user_key = getpass("Your key didn't match the saved key. Please try again: ")
+                hashed_key = hash256(user_key)
+                xyz += 1
+        print("Saving new hash")
+        tokenf = open("token", "w+")
+        tokenf.write(str(hashpw(user_key.encode("utf8"), gensalt(11))))
+        tokenf.close()
+
+    elif stored_hash.__len__() != 63:
         print("No compatible key stored. New key needed. (This will format any stored password's)\n")
         token_f.close()
         while True:
@@ -171,23 +193,23 @@ def check_key(token_f):  # Compares the stored hash with the user hash
         print("Saving new key")
         open("saved_logins", "w+")
         tokenf = open("token", "w+")
-        tokenf.write(hash256(key))
+        tokenf.write(str(hashpw(key.encode("utf8"), gensalt(11))))
 
         user_key = key
 
     else:
         user_key = getpass("Please enter your key: ")
-        hashed_key = hash256(user_key)
-        xyz = 1
-        while hashed_key != stored_hash:
+        hashed_key = hashpw(user_key.encode("utf8"), gensalt(11))
+        xyz = 0
+        no_match = True
+        while no_match:
             if xyz == 3:
-                print("Too many tries.")
-                sleep(0.1)
-                exit(0)
+                exit("Too many tries.")
             else:
-                user_key = getpass("Your key didn't match the saved key. Please try again: ")
-                hashed_key = hash256(user_key)
-                xyz += 1
+                if checkpw(user_key.encode("utf8"), hashed_key):
+                    break
+                else:
+                    xyz += 1
 
     key = user_key
 
@@ -375,8 +397,8 @@ def change_key(key):
             exit("Too many attempts")
     new_key = new_token()
 
-    with open("token", "w") as file:
-        file.write(hash256(new_key))
+    with open("token", "w+") as file:
+        file.write(str(hashpw(new_key.encode("utf8"), gensalt(11))))
     decrypt_file("saved_logins", "temp", key)
     encrypt_file("temp", "saved_logins", new_key)
     os.remove("temp")
@@ -551,7 +573,7 @@ def import_backup(key, token_f, saved_logins_f):
             if delete_old.lower() == "y":
                 os.remove(saved_logins_file.name)
             with open("token", "w") as token:
-                token.write(hash256(key))
+                token.write(str(hashpw(key.encode("utf8"), gensalt(11))))
             print("Import successful")
                 
         elif not decrypted:
@@ -576,10 +598,10 @@ def import_backup(key, token_f, saved_logins_f):
             print("Token file found")
             abc = 0
             backup_key = getpass("Please input the key used in this backup: ")
-            while backup_token != hash256(backup_key):
+            while checkpw(backup_token, hashpw(backup_key.encode("utf8"), gensalt(11))):
                 abc += 1
-                backup_key = getpass("Keys dont match, plese try again:")
-                print(backup_token, hash256(backup_key))
+                backup_key = getpass("Keys don't match, please try again:")
+                # print(backup_token, hashpw(backup_key.encode("utf8"), gensalt(11)))
                 if abc == 3:
                     print("If you have forgotten the key type leave to exit the backup import,"
                           " or type another key to try again.")
@@ -958,7 +980,7 @@ def load_ftp_config(key):
     return server, port, user, passw, auto_sync
 
 
-version = "v0.3.0"
+version = "v0.3.1"
 
 if __name__ == "__main__":
 

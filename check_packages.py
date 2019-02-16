@@ -7,7 +7,7 @@ try:
     x += 1
 except ModuleNotFoundError:
     print("pandas package missing")
-    print("To install please use pip3 install pandas\n")
+    print("To install please use sudo pip3 install pandas\n")
 
 
 try:
@@ -16,7 +16,16 @@ try:
     x += 1
 except ModuleNotFoundError:
     print("pyAesCrypt package missing")
-    print("To install please use pip3 install pyAesCrypt\n")
+    print("To install please use sudo pip3 install pyAesCrypt\n")
+
+
+try:
+    import bcrypt
+    print("bcrypt package found\n")
+    x += 1
+except ModuleNotFoundError:
+    print("bcrypt package missing")
+    print("To install please use sudo pip3 install bcrypt\n")
 
 
 try:
@@ -27,11 +36,11 @@ try:
 except ModuleNotFoundError:
     pass
     # print("urwid package missing")
-    # print("To install please use pip3 install urwid\n")
+    # print("To install please use sudo pip3 install urwid\n")
     # x += 1
 
     
-if x != 2:
+if x < 3:
     print("Some packages are missing, without them the app may not work.\n")
 else:
     print("All packages present.\n")

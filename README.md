@@ -11,6 +11,7 @@ Currently the available functions are:
 - Change password key
 - Exporting and import backups
 - Adding and remove Columns
+- Searching
 - Using FTP Servers to have persistent files across multiple devices
 
-pyAesCrypt and pandas packages are required. Please run check_packages.py for more information
+pyAesCrypt, brcypt and pandas packages are required. Please run check_packages.py for more information

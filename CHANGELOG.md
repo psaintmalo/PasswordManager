@@ -1,3 +1,6 @@
+v0.3.1
+- Changed hashing algorithm from sha3_512 to bcrypt
+
 v0.3.0
 - Added Search option
 - FTP Polished
@@ -12,7 +15,7 @@ v0.2.2
 - Bug fixes
 
 v0.2.1
-- Auto Sync with FTP Server
+- Auto Sync with FTP Server added
 - Bug fixes
 
 v0.2.0
@@ -21,7 +24,7 @@ v0.2.0
 
 v0.1.0
 - Option to add/remove columns
-- Added new security protocol to check the code hasnt been modified
+- Added new security protocol to check the code has not been modified
 - Fixed macOS and linux support problems
 - Fixed importing backups
 - Minor changes
