@@ -1,3 +1,6 @@
+v0.3.2
+- Bug fixes deriving from algorithm change
+
 v0.3.1
 - Changed hashing algorithm from sha3_512 to bcrypt
 

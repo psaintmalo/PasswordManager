@@ -160,8 +160,9 @@ def hash256(key):  # Hashes a given key with sha512
     return key_to_hash
 
 
-def check_key(token_f):  # Compares the stored hash with the user hash
-    stored_hash = token_f.read()  # File not readable after creating new token file
+def check_key():  # Compares the stored hash with the user hash
+    token_f = open("token", "rb")
+    stored_hash = token_f.read()[2:-1]  # File not readable after creating new token file
     # print(stored_hash.__len__())
     if stored_hash.__len__() == 128:
         print("Old hash found, checking...")
@@ -180,12 +181,12 @@ def check_key(token_f):  # Compares the stored hash with the user hash
         tokenf.write(str(hashpw(user_key.encode("utf8"), gensalt(11))))
         tokenf.close()
 
-    elif stored_hash.__len__() != 63:
+    elif stored_hash.__len__() != 60:
         print("No compatible key stored. New key needed. (This will format any stored password's)\n")
         token_f.close()
         while True:
-            key = getpass("Please insert the key you would like to use to lock/unlock the list:  ")
-            key_c = getpass("Confirm your key: ")
+            key = getpass(u"Please insert the key you would like to use to lock/unlock the list:  ")
+            key_c = getpass(u"Confirm your key: ")
             if key != key_c:
                 print("Key's didn't match\n")
             else:
@@ -199,17 +200,17 @@ def check_key(token_f):  # Compares the stored hash with the user hash
 
     else:
         user_key = getpass("Please enter your key: ")
-        hashed_key = hashpw(user_key.encode("utf8"), gensalt(11))
         xyz = 0
         no_match = True
         while no_match:
+            xyz += 1
             if xyz == 3:
                 exit("Too many tries.")
             else:
-                if checkpw(user_key.encode("utf8"), hashed_key):
+                if checkpw(user_key.encode("utf8"), stored_hash):
                     break
                 else:
-                    xyz += 1
+                    user_key = getpass("Wrong key, please try again: ")
 
     key = user_key
 
@@ -975,7 +976,6 @@ def load_ftp_config(key):
         os.remove("ftp_conf.py")
     else:
         print("No FTP Configuration file found")
-        server, port, user, passw, auto_sync = "", "", "", "", False
 
     return server, port, user, passw, auto_sync
 
@@ -1015,7 +1015,7 @@ if __name__ == "__main__":
     # Loads key and files
     token_file, logins_file, key_ = sc_files()
     if key_ == "":  # Checks that no key was given in the process above in result of missing files
-        key_ = check_key(token_file)
+        key_ = check_key()
 
     # Check and if existent, load the ftp configuration
     try:
