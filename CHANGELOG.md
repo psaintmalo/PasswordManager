@@ -1,3 +1,9 @@
+v0.3.3
+- Added Delete FTP Files option
+- Added 'User' as one of the defaults headers
+- Removed Reload FTP Configuration option
+- Minor changes
+
 v0.3.2
 - Bug fixes deriving from algorithm change
 

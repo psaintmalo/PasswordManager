@@ -22,10 +22,8 @@ from getpass import getpass
 print("Loading platform")
 from platform import system
 print("Loading hashlib")
-#################################
 from hashlib import sha3_512
 print("Loading datetime")
-#################################
 from datetime import datetime
 print("Loading checker")
 from checker import check_h, warning_msg
@@ -96,7 +94,7 @@ def send_mail_copy(saved_logins, token, key):
 
 def create_logins_file(key):
     with open("unenc", "w") as new_logins:
-        new_logins.write("Website,Mail,Password,Notes\n")
+        new_logins.write("Website,Mail,User,Password,Notes\n")
     encrypt_file("unenc", "saved_logins", key)
     os.remove("unenc")
     return open("saved_logins", "r")
@@ -406,21 +404,19 @@ def change_key(key):
     return new_key
 
 
-def delete_at_exit_safe():
-    if os.path.isfile("unenc"):
-        os.remove("unenc")
-    elif os.path.isfile("temp"):
-        os.remove("temp")
-
-
 def delete_files(token_f, logins_f, key):
-    pass_confirm = getpass("Are you sure you want to continue? All data will be lost. Type your key to continue: ")
+    print("FTP Files will not be deleted, please do so manually or with option 'J'")
+    pass_confirm = getpass("All data will be permanently deleted, type your key to continue or 'x' to cancel: ")
     if pass_confirm == key:
         token_f.close()
         logins_f.close()
         os.remove(logins_f.name)
         os.remove(token_f.name)
+        if os.path.exists("ftp.conf"):
+            os.remove("ftp.conf")
         exit(0)
+    elif option.lower() == "x":
+        pass
     else:
         print("Keys don't match")
         sleep(1.5)
@@ -871,9 +867,11 @@ def pull_ftp(server, port, user, passw):
             print("Files retrieved successfully")
             sleep(1)
     except:
-        print("Unexpected error:", sys.exc_info()[0])
-        # print("Are there any files at the ftp server?")
-        input("Press enter to continue")
+        print("\nUnexpected error: ", sys.exc_info()[0])
+        opt = input("Press enter to continue or 'X' to get error details: ")
+        if opt.lower() == "x":
+            print("\n    -------- Error Info -------- \n")
+            raise
 
     if cancel:
         exit("Its necessary to restart the program")
@@ -901,8 +899,11 @@ def push_ftp(server, port, user, passw):
         print("Files sent succesfully")
         sleep(1)
     except:
-        print("Unexpected error:", sys.exc_info()[0])
-        input("Press enter to continue")
+        print("\nUnexpected error: ", sys.exc_info()[0])
+        opt = input("Press enter to continue or 'X' to get error details: ")
+        if opt.lower() == "x":
+            print("\n    -------- Error Info -------- \n")
+            raise
 
 
 def silent_push(server, port, user, passw):
@@ -930,8 +931,8 @@ def check_ftp(server, port, user, passw):
         input("\nPress enter to continue")
     except:
         print("\nUnexpected error: ", sys.exc_info()[0])
-        opt = input("Press enter to continue or 'info' to get error details: ")
-        if opt.lower() == "info":
+        opt = input("Press enter to continue or 'X' to get error details: ")
+        if opt.lower() == "x":
             print("\n    -------- Error Info -------- \n")
             raise
 
@@ -980,7 +981,38 @@ def load_ftp_config(key):
     return server, port, user, passw, auto_sync
 
 
-version = "v0.3.1"
+def show_ftp_options(server_, port_, user_, passw_, auto_sync_):
+    print("Server: {serverx}\nPort: {portx}\nUser: {userx}\nPassword: {passwd} \nAuto Sync: {a_s}".
+          format(serverx=server_, portx=port_, userx=user_, a_s=auto_sync_,
+                 passwd="*" * len(passw_)), end="\n\n")
+    input("Press enter to continue ")
+
+
+def delete_ftp_files(server_, port_, user_, passw_):
+    try:
+        print("Connecting to server")
+        ftp = FTP()
+
+        ftp.connect(server_, int(port_))
+        print("Logging in")
+        ftp.login(user_, passw_)
+        print("Deleting files")
+
+        ftp.delete("token")
+        ftp.delete("saved_logins")
+
+        ftp.quit()
+        print("Files sent succesfully")
+        sleep(1)
+    except:
+        print("\nUnexpected error: ", sys.exc_info()[0])
+        opt = input("Press enter to continue or 'X' to get error details: ")
+        if opt.lower() == "x":
+            print("\n    -------- Error Info -------- \n")
+            raise
+
+
+version = "v0.3.3"
 
 if __name__ == "__main__":
 
@@ -1026,14 +1058,14 @@ if __name__ == "__main__":
         ftp_ = False
 
     # Initial pull if auto sync is enabled
-    if auto_sync: ##########################################################################################
+    if auto_sync:  # ---------------------------------------------------------------------------------------------------
         cancel_pull = pull_ftp(server, port, user, passw)
         if cancel_pull:
             print("Canceling auto sync")
             auto_sync = False
 
     columns = get_columns(logins_file, key_)
-    accepted_options = "1234567890abcdefghix"
+    accepted_options = "1234567890abcdefghi"
     sync_options = "23457ab"
 
     while True:  # Main loop
@@ -1053,7 +1085,7 @@ if __name__ == "__main__":
 
  D) Configure FTP Server      E) Test FTP Server
  F) Pull from FTP Client      G) Push to FTP Server 
- H) Reload FTP Config         I) Print Current FTP Config
+ H) Print Current FTP Config  I) Delete FTP Files
         
  0) Exit
         """
@@ -1111,22 +1143,21 @@ if __name__ == "__main__":
                         ftp_ = True
                     except NameError:
                         ftp_ = False
-                if ftp_:
+                elif ftp_:
                     if option.lower() == "g":
                         push_ftp(server, port, user, passw)
                     elif option.lower() == "f":
                         pull_ftp(server, port, user, passw)
                     elif option.lower() == "e":
                         check_ftp(server, port, user, passw)
+                    # elif option.lower() == "h":
+                    #    server, port, user, passw, auto_sync = load_ftp_config(key_)
                     elif option.lower() == "h":
-                        server, port, user, passw, auto_sync = load_ftp_config(key_)
+                        show_ftp_options()
                     elif option.lower() == "i":
-                        print("Server: {serverx}\nPort: {portx}\nUser: {userx}\nPassword: {passwd} \nAuto Sync: {a_s}".
-                              format(serverx=server, portx=port, userx=user, a_s=auto_sync,
-                                     passwd="*"*len(passw)), end="\n\n")
-                        input("Press enter to continue ")
+                        delete_ftp_files(server, port, user, passw)
                 else:
-                    print("Please configure FTP first")
+                    print("\nPlease configure FTP first")
                     input("\nPress Enter to continue")
         else:
             print("'%s' isn't a supported option" % option)
