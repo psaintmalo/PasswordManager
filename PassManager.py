@@ -472,8 +472,17 @@ def local_backup(logins_f, token_f, key):
         path = home_path + "/Documents/PasswordManager_Backup/"
 
     enc = input("Would you like to save the backup (E)ncrypted or (D)ecrypted: ")
-    datetime_ = (str(datetime.now()).replace(" ", "_").replace(":", "-"))[:-7]
-    backup_name = logins_f.name + datetime_
+    custom_name_opt = input("Would you like to save files with (A)utomatically generated names or (C)ustom names: ")
+    if custom_name_opt.lower() == "c":
+        backup_name = input("Please enter name for saved_logins file: ")
+        if enc.lower() == "e":
+            token_back_name = input("Please enter name for taken file: ")
+    elif custom_name_opt.lower() == "a":
+        datetime_ = (str(datetime.now()).replace(" ", "_").replace(":", "-"))[:-7]
+        backup_name = logins_f.name + datetime_
+        token_back_name = token_f.name + datetime_
+    else:
+        enc = "a"
 
     try:
         os.makedirs(path)
@@ -483,7 +492,7 @@ def local_backup(logins_f, token_f, key):
     if enc.lower() == "e":
         print("Copying token file to " + path)
         shutil.copy(logins_f.name, path + backup_name)
-        shutil.copy(token_f.name, path + token_file.name + datetime_)
+        shutil.copy(token_f.name, path + token_back_name)
     elif enc.lower() == "d":
         print("Decrypting files")
         w = 0
@@ -502,7 +511,7 @@ def local_backup(logins_f, token_f, key):
     else:
         print("Unexpected error, please try again")
 
-    sleep(2)
+    input("\nPress enter to continue")
 
 
 def import_backup(key, token_f, saved_logins_f):
@@ -879,7 +888,7 @@ def pull_ftp(server, port, user, passw):
     return cancel
 
 
-def push_ftp(server, port, user, passw):
+def push_ftp(server, port, user, passw, token_name="token", saved_logins_name = "saved_logins"):
     try:
         print("Connecting to server")
         ftp = FTP()
@@ -890,10 +899,10 @@ def push_ftp(server, port, user, passw):
         print("Uploading files")
 
         with open('token', 'rb') as f:
-            ftp.storbinary('STOR %s' % 'token', f)
+            ftp.storbinary('STOR %s' % token_name, f)
 
         with open('saved_logins', 'rb') as f:
-            ftp.storbinary('STOR %s' % 'saved_logins', f)
+            ftp.storbinary('STOR %s' % saved_logins_name, f)
 
         ftp.quit()
         print("Files sent succesfully")
@@ -989,30 +998,180 @@ def show_ftp_options(server_, port_, user_, passw_, auto_sync_):
 
 
 def delete_ftp_files(server_, port_, user_, passw_):
-    try:
-        print("Connecting to server")
-        ftp = FTP()
+    print("This will not delete any backup files you may have saved there.")
+    opt = input("Would you like to remove the FTP Configuration? Y/n: ").lower()
+    if opt != "y" and opt != "n":
+        print("Not an acceptable option, continuing without deleting configuration")
+    cont = input("Are you sure you want to delete the files? Y/n: ").lower()
+    if cont != "y" and cont != "n":
+        print("That wasn't an acceptable option")
+        cont = input("Are you sure you want to delete the files? Y/n: ").lower()
 
-        ftp.connect(server_, int(port_))
-        print("Logging in")
-        ftp.login(user_, passw_)
-        print("Deleting files")
+    if cont == "y":
+        try:
+            print("Connecting to server")
+            ftp = FTP()
 
-        ftp.delete("token")
-        ftp.delete("saved_logins")
+            ftp.connect(server_, int(port_))
+            print("Logging in")
+            ftp.login(user_, passw_)
+            print("Deleting files")
 
-        ftp.quit()
-        print("Files sent succesfully")
-        sleep(1)
-    except:
-        print("\nUnexpected error: ", sys.exc_info()[0])
-        opt = input("Press enter to continue or 'X' to get error details: ")
-        if opt.lower() == "x":
-            print("\n    -------- Error Info -------- \n")
-            raise
+            ftp.delete("token")
+            ftp.delete("saved_logins")
+
+            if opt == "y":
+                os.remove("ftp.conf")
+            elif opt != "n":
+                print("Not an acceptable option, continuing without deleting")
+
+            ftp.quit()
+            print("Files deleted")
+            sleep(1)
+        except:
+            print("\nUnexpected error: ", sys.exc_info()[0])
+            opt = input("Press enter to continue or 'X' to get error details: ")
+            if opt.lower() == "x":
+                print("\n    -------- Error Info -------- \n")
+                raise
 
 
-version = "v0.3.3"
+def make_ftp_backup(server_, port_, user_, passw_, key):
+    stop = False
+    datetime_ = (str(datetime.now()).replace(" ", "_").replace(":", "-"))[:-7]
+
+    enc = input("Would you like the backup to be (E)ncrypted or (D)ecrypted: ")
+    custom_name_opt = input("Would you like an (A)utomatically name or a (C)ustom name: ")
+
+    if custom_name_opt.lower() == "a":
+        token_backup_name = "token" + datetime_
+        backup_name = "saved_logins" + datetime_
+        print("\nSaved_logins will be saved as: ", backup_name)
+        print("Token will be saved as: %s\n" % token_backup_name)
+
+    elif custom_name_opt.lower() == "c":
+        backup_name = input("Name for 'saved_logins' file: ")
+        if enc == "e":
+            token_backup_name = input("Name for 'token' file: ")
+        elif enc != "d":
+            stop = True
+
+    else:
+        stop = True
+
+    if not stop:
+        try:
+            ftp = FTP()
+            ftp.connect(server_, int(port_))
+            ftp.login(user_, passw_)
+
+            if enc == "e":
+                with open('saved_logins', 'rb') as f:
+                    ftp.storbinary('STOR %s' % backup_name, f)
+                with open('token', 'rb') as t:
+                    ftp.storbinary('STOR %s' % token_backup_name, t)
+            else:
+                decrypt_file("saved_logins", "temp", key)
+                with open('temp', 'rb') as f:
+                    ftp.storbinary('STOR %s' % backup_name, f)
+
+        except:
+            print("\nUnexpected error: ", sys.exc_info()[0])
+            opt = input("Press enter to continue or 'X' to get error details: ")
+            if opt.lower() == "x":
+                print("\n    -------- Error Info -------- \n")
+                raise
+
+    if stop:
+        print("An error has occurred")
+
+
+def import_ftp_backup(server_, port_, user_, passw_, key):
+    stop = False
+    enc = input("Is the backup (E)ncrypted or (D)ecrypted: ").lower()
+    while enc != "e" and enc != "d":
+        print("Unsupported option")
+        enc = input("Please select 'E' for encrypted or 'D' for decrypted or 'X' to cancel: ").lower()
+        if enc == "x":
+            stop = True
+
+    if not stop:
+        backup_name = input("Name of the 'saved_logins' file: ")
+        if enc == "e":
+            token_backup_name = input("Name of the 'token' file: ")
+
+        try:
+            cancel = False
+
+            print("\nConnecting to server\n")
+            ftp = FTP()
+            print(ftp.connect(server_, int(port_)))
+            print("\nLogging in\n")
+            print(ftp.login(user_, passw_))
+            print("\nChecking token")
+
+            if enc == "e":
+                with open("token_f", "wb") as f:
+                    ftp.retrbinary("RETR " + token_backup_name, f.write)
+
+                token = open("token", "r")
+                token_f = open("token_f", "r")
+
+                if token.read() != token_f.read():
+                    yn = input("Seems the key stored on the FTP Server isn't the same as the one locally,"
+                               " do you want to continue (Y/n): ").lower()
+
+                    if yn == "y":
+                        cancel = True
+
+                os.remove("token_f")
+
+                print(backup_name + " " + token_backup_name)
+                with open("token", "wb") as f:
+                    ftp.retrbinary("RETR " + token_backup_name, f.write)
+
+                with open("saved_logins", "wb") as f:
+                    ftp.retrbinary("RETR " + backup_name, f.write)
+
+            else:
+
+                print("This file will be encrypted with the current key")
+
+                with open("temp", "wb") as f:
+                    ftp.retrbinary("RETR " + backup_name, f.write)
+                encrypt_file("temp", "saved_logins", key)
+
+                ftp.quit()
+                print("Files retrieved successfully")
+                sleep(1)
+        except:
+            print("\nUnexpected error: ", sys.exc_info()[0])
+            opt = input("Press enter to continue or 'X' to get error details: ")
+            if opt.lower() == "x":
+                print("\n    -------- Error Info -------- \n")
+                raise
+
+        if cancel:
+            exit("Its necessary to restart the program")
+
+        input("Press enter to continue ")
+
+
+def delete_ftp_config():
+    cont = input("Are you sure you want to continue? Y/n: ").lower()
+    if cont != "y" and cont != "n":
+        print("That wasnt a valid option")
+        cont = input("Are you sure you want to continue? Y/n: ").lower()
+        if cont != "y" and cont != "n":
+            print("Not a valid option")
+            input("Press enter to continue")
+            cont = "n"
+
+    if cont == "y":
+        os.remove("ftp.conf")
+
+
+version = "v0.4.0"
 
 if __name__ == "__main__":
 
@@ -1033,14 +1192,14 @@ if __name__ == "__main__":
 
     clear_console()
 
-    header_msg = " test" * 10
+    header_msg = ""
 
     # Checks if code has been tampered, and if so warning function is defined to print the message
     warning = check_h()
     if warning:
         def header(): warning_msg()
     else:
-        def header(): pass  # print(header_msg)
+        def header(): print(header_msg)
 
     header()
 
@@ -1065,32 +1224,39 @@ if __name__ == "__main__":
             auto_sync = False
 
     columns = get_columns(logins_file, key_)
-    accepted_options = "1234567890abcdefghi"
+    accepted_options = "1234567890abcdefghijkl"
     sync_options = "23457ab"
+
+    option_msg = """ 1) Read saved logins         2) Add new record
+ 3) Edit existing record      4) Delete record
+ 5) Change key                6) Delete all files
+ 7) Move record               8) Create backup
+ 9) Import backup             A) Add new column
+ B) Delete column             C) Search
+     """
+
+    configure_ftp_menu = "\n D) Configure FTP Server"
+
+    ftp_full_menu = """       
+        --------------- FTP ---------------
+
+ D) Configure FTP Server      E) Test FTP Server
+ F) Pull from FTP Client      G) Push to FTP Server 
+ H) Print Current FTP Config  I) Delete FTP Files
+ J) Backup to FTP Server      K) Import backup from FTP
+ L) Delete FTP Configuration"""
+
+    exit_menu = "\n\n 0) Exit \n"
 
     while True:  # Main loop
         clear_console()
 
         header()
 
-        option_msg = """
- 1) Read saved logins         2) Add new record
- 3) Edit existing record      4) Delete record
- 5) Change key                6) Delete all files
- 7) Move record               8) Create backup
- 9) Import backup             A) Add new column
- B) Delete column             C) Search
-
-       --------------- FTP ---------------
-
- D) Configure FTP Server      E) Test FTP Server
- F) Pull from FTP Client      G) Push to FTP Server 
- H) Print Current FTP Config  I) Delete FTP Files
-        
- 0) Exit
-        """
-        
-        print(option_msg)
+        if ftp_:
+            print(option_msg + ftp_full_menu + exit_menu)
+        else:
+            print(option_msg + configure_ftp_menu + exit_menu)
         option = input(" -> ").replace(" ", "")
 
         if option.isdigit():
@@ -1153,15 +1319,23 @@ if __name__ == "__main__":
                     # elif option.lower() == "h":
                     #    server, port, user, passw, auto_sync = load_ftp_config(key_)
                     elif option.lower() == "h":
-                        show_ftp_options()
+                        show_ftp_options(server, port, user, passw, auto_sync)
                     elif option.lower() == "i":
                         delete_ftp_files(server, port, user, passw)
+                    elif option.lower() == "j":
+                        make_ftp_backup(server, port, user, passw, key_)
+                    elif option.lower() == "k":
+                        import_ftp_backup(server, port, user, passw, key_)
+                    elif option.lower() == "l":
+                        ftp_ = False
+                        auto_sync = False
+                        delete_ftp_config()
                 else:
                     print("\nPlease configure FTP first")
-                    input("\nPress Enter to continue")
+                    input("\nPress enter to continue ")
         else:
-            print("'%s' isn't a supported option" % option)
-            input("\nPress Enter to continue")
+            print("\n'%s' isn't a supported option" % option)
+            input("\nPress enter to continue ")
 
         if str(option).lower() in sync_options and auto_sync and ftp_:
             print("\n Syncing to FTP")

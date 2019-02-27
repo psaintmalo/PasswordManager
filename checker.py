@@ -2,9 +2,9 @@ import hashlib
 
 
 def warning_msg():
-    print("WARNING: Code migh have been tampered")
+    print("WARNING: Code has been modified")
     print("Download it again from www.github.com/psaintmalo/PasswordManager")
-    print("Or continue at your own risk")
+    print("Or continue at your own risk\n")
 
 
 def check_h():
@@ -22,7 +22,7 @@ def check_h():
 
         md5_ = md5_.hexdigest()
 
-    if md5_ != "c83ad5e3eef19730bd1fde9d00cc67f2" and __name__ != "__main__":
+    if md5_ != "fd129fcea88ee4b7f4952bacc4bdf608" and __name__ != "__main__":
         return True
     elif __name__ == "__main__":
         return md5_

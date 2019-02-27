@@ -1,3 +1,10 @@
+v0.4.0
+- Added option to make a backup on the FTP server
+- Added option to import a backup from the FTP server
+- Added option to delete the FTP Configuration
+- FTP menu now only shows if ftp is configured
+- Minor changes
+
 v0.3.3
 - Added Delete FTP Files option
 - Added 'User' as one of the defaults headers
