@@ -22,7 +22,7 @@ def check_h():
 
         md5_ = md5_.hexdigest()
 
-    if md5_ != "fd129fcea88ee4b7f4952bacc4bdf608" and __name__ != "__main__":
+    if md5_ != "5f60f597708171c90439f9bfeb65235a" and __name__ != "__main__":
         return True
     elif __name__ == "__main__":
         return md5_

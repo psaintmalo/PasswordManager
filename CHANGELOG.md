@@ -1,3 +1,6 @@
+v0.4.1
+- Minor changes
+
 v0.4.0
 - Added option to make a backup on the FTP server
 - Added option to import a backup from the FTP server

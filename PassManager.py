@@ -231,11 +231,11 @@ def readall_passwords(logins_f, key):
 
 
 def csv_value_change(x_, y, value, file_name):
-    file = open(file_name, "r")
-    csv_read = csv.reader(file)
+    f = open(file_name, "r")
+    csv_read = csv.reader(f)
     lines = list(csv_read)
     lines[x_ + 1][y] = value
-    new_csv_ = open(file.name, "w", newline="")
+    new_csv_ = open(f.name, "w", newline="")
     writer = csv.writer(new_csv_)
     writer.writerows(lines)
 
@@ -396,8 +396,8 @@ def change_key(key):
             exit("Too many attempts")
     new_key = new_token()
 
-    with open("token", "w+") as file:
-        file.write(str(hashpw(new_key.encode("utf8"), gensalt(11))))
+    with open("token", "w+") as f:
+        f.write(str(hashpw(new_key.encode("utf8"), gensalt(11))))
     decrypt_file("saved_logins", "temp", key)
     encrypt_file("temp", "saved_logins", new_key)
     os.remove("temp")
@@ -405,8 +405,8 @@ def change_key(key):
 
 
 def delete_files(token_f, logins_f, key):
-    print("FTP Files will not be deleted, please do so manually or with option 'J'")
-    pass_confirm = getpass("All data will be permanently deleted, type your key to continue or 'x' to cancel: ")
+    print("FTP Files will not be deleted, please do so manually or with option 'J' on the main menu")
+    pass_confirm = getpass("All data will be deleted, type your key to continue or 'x' to cancel: ")
     if pass_confirm == key:
         token_f.close()
         logins_f.close()
@@ -464,6 +464,8 @@ def move_record(logins_f, key):
 
 def local_backup(logins_f, token_f, key):
     global os_sys
+    backup_name = ""
+    token_back_name = ""
     home_path = os.path.expanduser("~")
     if os_sys in ["windows"]:
         path = home_path + "\\Documents\\PasswordManager_Backup\\"
@@ -561,6 +563,7 @@ def import_backup(key, token_f, saved_logins_f):
                 saved_logins_file = open(saved_logins_path, "r")
             else:
                 exit("Couldn't find path to file")
+                saved_logins_file = ""
 
         decrypted = True
         try:
@@ -642,7 +645,7 @@ def add_new_column(saved_logins_f, key):
     else:
         decrypt_file(saved_logins_f.name, "unenc", key)
         unenc_f = open("unenc", "r")
-        with open("temp", "w") as file:
+        with open("temp", "w") as f:
             x_ = 0
 
             for row in unenc_f:
@@ -650,39 +653,33 @@ def add_new_column(saved_logins_f, key):
                 if x_ == 0:
                     x_ += 1
                     new_row = (row[:-1] + ",%s" % column_name + n)
-                    file.write(new_row)
+                    f.write(new_row)
                 else:
                     new_row = row[:-1] + "," + n
-                    file.write(new_row)
+                    f.write(new_row)
 
                 del x_
-                file.flush()
+                f.flush()
 
         encrypt_file("temp", saved_logins_f.name, key)
         os.remove("temp")
         os.remove("unenc")
     
     
-def delete_column(saved_logins_f, key):
-    decrypt_file(saved_logins_f.name, "temp", key)
-    with open("temp", "r") as file:
-        for row in file:
-            header = row[:-1]
-            break
-    
-    header_list = header.split(",")
+def delete_column(saved_logins_f, key, header_list):
     
     for item in header_list:
-        print(item, end=" ")
+        print(item.capitalize(), end=" ")
     else:
         print("")
         
-    column_name = input("\nName of the column you want to remove: ")
+    column_name = input("\nName of the column you want to remove: ").lower()
 
     try:
         index2remove = header_list.index(column_name)
-
+        decrypt_file(saved_logins_f.name, "temp", key)
         with open("temp", "r") as source:
+            os.remove("temp")
             rdr = csv.reader(source)
             with open("result", "w") as result:
                 wtr = csv.writer(result)
@@ -692,7 +689,6 @@ def delete_column(saved_logins_f, key):
 
         encrypt_file("result", "saved_logins", key)
         os.remove("result")
-        os.remove("temp")
 
     except ValueError:
         print("That wasn't a valid column")
@@ -1274,9 +1270,9 @@ if __name__ == "__main__":
                     readall_passwords(logins_file.name, key_)
                     x = input("\nPress enter to continue")
                 elif option == 2:
-                    add_new_record(logins_file, key_, columns) # New addition of columns, edit code
+                    add_new_record(logins_file, key_, columns)  # New addition of columns, edit code
                 elif option == 3:
-                    edit_record(logins_file, key_, columns) # New addition of columns, edit code
+                    edit_record(logins_file, key_, columns)  # New addition of columns, edit code
                 elif option == 4:
                     delete_record(logins_file, key_)
                 elif option == 5:
@@ -1296,7 +1292,7 @@ if __name__ == "__main__":
                     add_new_column(logins_file, key_)
                     columns = get_columns(logins_file, key_)
                 elif option.lower() == "b":
-                    delete_column(logins_file, key_)
+                    delete_column(logins_file, key_, columns)
                     columns = get_columns(logins_file, key_)
                 elif option.lower() == "c":
                     search(logins_file, columns, key_)
